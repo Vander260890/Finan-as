@@ -370,6 +370,7 @@ td.vb{color:var(--blue);font-weight:600}td.va{color:var(--amber);font-weight:600
             <div class="legend">
               <span class="lg-i"><span class="lg-dot" style="background:#1a7a52;border-radius:50%"></span>Entradas</span>
               <span class="lg-i"><span class="lg-dot" style="background:#b83a1c;border-radius:50%"></span>Saídas</span>
+              <span class="lg-i"><span class="lg-dot" style="background:#5c3fa0;border-radius:50%"></span>Rendimento</span>
               <span class="lg-i"><span class="lg-dot" style="background:#6b6960;border-radius:50%"></span>Saldo</span>
             </div>
             <div style="display:flex;gap:4px">
@@ -1226,11 +1227,12 @@ function renderLineChart(){
     const ay=d.anoN||d.data?.year,am=d.mesN||d.data?.month;
     if(!ay||!am) return;
     const k=lineGran==='year'?String(ay):`${ay}-${String(am).padStart(2,'0')}`;
-    if(!byK[k])byK[k]={e:0,s:0,iv:0,lq:0};
+    if(!byK[k])byK[k]={e:0,s:0,iv:0,lq:0,rd:0};
     if(d.tipo==='entrada')           byK[k].e +=d.valor;
     else if(d.tipo==='saida')        byK[k].s +=d.valor;
     else if(d.tipo==='investimento') byK[k].iv+=d.valor;
     else if(d.tipo==='liquidacao')   byK[k].lq+=d.valor;
+    else if(d.tipo==='rendimento')   byK[k].rd+=d.valor;
   });
   const keys=Object.keys(byK).sort();
   const labels=keys.map(k=>{
@@ -1241,17 +1243,21 @@ function renderLineChart(){
   const dataS =keys.map(k=>Math.round(byK[k].s));
   const dataIV=keys.map(k=>Math.round(byK[k].iv||0));
   const dataLQ=keys.map(k=>Math.round(byK[k].lq||0));
+  const dataRD=keys.map(k=>Math.round(byK[k].rd||0));
   const dataD =keys.map(k=>Math.round(byK[k].e-byK[k].s));
+  // When selTipo is rendimento, use rd as main dataset for visibility
+  const isSaldoOrRendimento = selTipo==='rendimento'||selTipo==='saldo';
 
   if(chartL) chartL.destroy();
   chartL=new Chart(document.getElementById('chartLine'),{
     type:'line',
     data:{labels,datasets:[
-      {label:'Entradas',data:dataE,borderColor:'#1a7a52',backgroundColor:'rgba(26,122,82,0.08)',borderWidth:2,pointRadius:4,pointHoverRadius:6,pointBackgroundColor:'#1a7a52',fill:true,tension:0.3},
-      {label:'Saídas',  data:dataS,borderColor:'#b83a1c',backgroundColor:'rgba(184,58,28,0.06)',borderWidth:2,pointRadius:4,pointHoverRadius:6,pointBackgroundColor:'#b83a1c',fill:true,tension:0.3},
-      {label:'Investimento',data:dataIV,borderColor:'#1855a3',backgroundColor:'transparent',borderWidth:1.5,borderDash:[3,3],pointRadius:3,pointHoverRadius:5,pointBackgroundColor:'#1855a3',fill:false,tension:0.3,datalabels:{display:false}},
-      {label:'Liquidação',  data:dataLQ,borderColor:'#8a5200',backgroundColor:'transparent',borderWidth:1.5,borderDash:[3,3],pointRadius:3,pointHoverRadius:5,pointBackgroundColor:'#8a5200',fill:false,tension:0.3,datalabels:{display:false}},
-      {label:'Saldo',   data:dataD,borderColor:'#6b6960',backgroundColor:'transparent',borderWidth:2,borderDash:[5,4],pointRadius:3,pointHoverRadius:5,pointBackgroundColor:'#6b6960',fill:false,tension:0.3,datalabels:{display:false}}
+      {label:'Entradas',    data:dataE, borderColor:'#1a7a52',backgroundColor:'rgba(26,122,82,0.08)', borderWidth:2,pointRadius:4,pointHoverRadius:6,pointBackgroundColor:'#1a7a52',fill:true, tension:0.3},
+      {label:'Saídas',      data:dataS, borderColor:'#b83a1c',backgroundColor:'rgba(184,58,28,0.06)',borderWidth:2,pointRadius:4,pointHoverRadius:6,pointBackgroundColor:'#b83a1c',fill:true, tension:0.3},
+      {label:'Investimento',data:dataIV,borderColor:'#1855a3',backgroundColor:'transparent',          borderWidth:1.5,borderDash:[3,3],pointRadius:3,pointHoverRadius:5,pointBackgroundColor:'#1855a3',fill:false,tension:0.3,datalabels:{display:false}},
+      {label:'Liquidação',  data:dataLQ,borderColor:'#8a5200',backgroundColor:'transparent',          borderWidth:1.5,borderDash:[3,3],pointRadius:3,pointHoverRadius:5,pointBackgroundColor:'#8a5200',fill:false,tension:0.3,datalabels:{display:false}},
+      {label:'Rendimento',  data:dataRD,borderColor:'#5c3fa0',backgroundColor:'rgba(92,63,160,0.08)',borderWidth:2,pointRadius:4,pointHoverRadius:6,pointBackgroundColor:'#5c3fa0',fill:true, tension:0.3},
+      {label:'Saldo',       data:dataD, borderColor:'#6b6960',backgroundColor:'transparent',          borderWidth:2,borderDash:[5,4], pointRadius:3,pointHoverRadius:5,pointBackgroundColor:'#6b6960',fill:false,tension:0.3,datalabels:{display:false}}
     ]},
     options:{
       responsive:true,maintainAspectRatio:false,
@@ -1268,7 +1274,7 @@ function renderLineChart(){
         }},
         datalabels:{
           display:ctx=>{
-            if(ctx.dataset.label==='Saldo') return false;
+            if(ctx.dataset.label==='Saldo'||ctx.dataset.label==='Investimento'||ctx.dataset.label==='Liquidação') return false;
             const data=ctx.dataset.data,v=data[ctx.dataIndex];
             if(v===0) return false;
             const isLast=ctx.dataIndex===data.length-1;
@@ -1276,7 +1282,7 @@ function renderLineChart(){
             return isLast||isPeak;
           },
           anchor:'top',align:'top',
-          color:ctx=>ctx.dataset.label==='Entradas'?'#1a7a52':'#b83a1c',
+          color:ctx=>ctx.dataset.label==='Entradas'?'#1a7a52':ctx.dataset.label==='Rendimento'?'#5c3fa0':'#b83a1c',
           font:{size:9,weight:'600'},
           formatter:v=>fmtShort(v)
         }
