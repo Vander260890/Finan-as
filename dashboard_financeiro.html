@@ -618,15 +618,14 @@ function buildRows(rows,def){
     const ano=kAno?String(r[kAno]||''):'';
     const mesRaw=kMes?String(r[kMes]||''):'';
     if(!valor&&!nome&&!item)return null;
-    const mesN=parseMes(mesRaw);
-    // Year: from ANO column, or from parsed DATA column
-    const anoN=parseInt(ano)||data?.year||null;
-    // Day: from parsed DATA column
-    const dayN=data?.day||1;
+    // Use DATA column as primary source for all date parts
+    const mesN  = data?.month || parseMes(mesRaw) || null;
+    const anoN  = data?.year  || parseInt(ano)    || null;
+    const dayN  = data?.day   || 1;
     // Build final date object
-    const dataF=(anoN&&mesN)
-      ?{year:anoN,month:mesN,day:dayN,str:`${String(dayN).padStart(2,'0')}/${String(mesN).padStart(2,'0')}/${anoN}`}
-      :data;
+    const dataF = (anoN && mesN)
+      ? {year:anoN, month:mesN, day:dayN, str:`${String(dayN).padStart(2,'0')}/${String(mesN).padStart(2,'0')}/${anoN}`}
+      : data;
     return{data:dataF,nome:nome.trim(),item:item.trim(),valor,tipo:classify(item,lanc,def),mesN:mesN||data?.month||null,anoN:anoN||data?.year||null};
   }).filter(Boolean);
 }
@@ -781,7 +780,7 @@ function renderBC(){
   const parts=[{label:'Início',fn:()=>clearAll()}];
   const sl={dashboard:'Dashboard',entradas:'Entradas',saidas:'Saídas',investimentos:'Investimentos'};
   if(section!=='dashboard')parts.push({label:sl[section],fn:()=>{drillStack=[];selTipo=null;applyFilters();}});
-  if(selTipo){const tl={entrada:'Entradas',saida:'Saídas',investimento:'Investimento',liquidacao:'Liquidação'};parts.push({label:tl[selTipo],fn:()=>{drillStack=[];selTipo=null;applyFilters();}});}
+  if(selTipo){const tl={entrada:'Entradas',saida:'Saídas',investimento:'Investimento',liquidacao:'Liquidação',rendimento:'Rendimento Poupança',saldo:'Saldo'};parts.push({label:tl[selTipo],fn:()=>{drillStack=[];selTipo=null;applyFilters();}});}
   if(selAnos.length||selMeses.length){
     const lb=[...selAnos,...selMeses.map(v=>MESES[parseInt(v)-1])].join(', ');
     parts.push({label:lb});
@@ -801,7 +800,7 @@ function renderPills(){
   if(!selNomes.length&&fv.nome)pills.push({l:'Nome: "'+fv.nome+'"',c:()=>{document.getElementById('fNome').value='';closeAc('acNome');applyFilters();}});
   selItems.forEach(v=>pills.push({l:'Item: '+v,c:()=>{removeSelItem(v);}}));
   selItems.forEach(v=>pills.push({l:'Item: '+v,c:()=>{toggleSel('item',v);}}));
-  if(selTipo){const tl={entrada:'Entradas',saida:'Saídas',investimento:'Investimento',liquidacao:'Liquidação'};pills.push({l:'Tipo: '+tl[selTipo],c:()=>{selTipo=null;applyFilters();}});}
+  if(selTipo){const tl={entrada:'Entradas',saida:'Saídas',investimento:'Investimento',liquidacao:'Liquidação',rendimento:'Rendimento Poupança',saldo:'Saldo'};pills.push({l:'Tipo: '+tl[selTipo],c:()=>{selTipo=null;applyFilters();}});}
   drillStack.forEach((ds,i)=>pills.push({l:ds.label,c:()=>{drillStack=drillStack.slice(0,i);applyFilters();}}));
   document.getElementById('pills').innerHTML=pills.map(p=>`<span class="pill">${p.l}<span class="pill-x" onclick="(${p.c})()">×</span></span>`).join('');
 }
@@ -1119,7 +1118,7 @@ function renderCharts(){
     const ay=d.anoN||d.data?.year,am=d.mesN||d.data?.month;
     if(!ay||!am) return;
     const k=`${ay}-${String(am).padStart(2,'0')}`;
-    if(!byM[k])byM[k]={e:0,s:0,iv:0,lq:0};
+    if(!byM[k])byM[k]={e:0,s:0,iv:0,lq:0,rd:0};
     if(d.tipo==='entrada')           byM[k].e  +=d.valor;
     else if(d.tipo==='saida')        byM[k].s  +=d.valor;
     else if(d.tipo==='investimento') byM[k].iv +=d.valor;
