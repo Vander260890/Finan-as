@@ -685,17 +685,16 @@ function toggleSel(field, val){
     selMeses=selMeses.includes(val)?selMeses.filter(v=>v!==val):[...selMeses,val];
   } else if(field==='nome'){
     selNomes=selNomes.includes(val)?selNomes.filter(v=>v!==val):[...selNomes,val];
-    document.getElementById('fNome').value='';
   } else if(field==='item'){
     selItems=selItems.includes(val)?selItems.filter(v=>v!==val):[...selItems,val];
-    document.getElementById('fItem').value='';
   }
   renderMultiPills();
-  const dropId=field==='ano'?'acAno':field==='mes'?'acMes':field==='nome'?'acNome':'acItem';
-  populateDrop(dropId);
-  const drop=document.getElementById(dropId);
-  if(drop) drop.classList.add('open');
   applyFilters();
+  // Keep dropdown open and refresh checkmarks
+  const dropId=field==='ano'?'acAno':field==='mes'?'acMes':field==='nome'?'acNome':'acItem';
+  if(field==='nome') onAcInputMulti('fNome','acNome','nome');
+  else if(field==='item') onAcInputMulti('fItem','acItem','item');
+  else { populateDrop(dropId); document.getElementById(dropId)?.classList.add('open'); }
 }
 
 function onAcInputMulti(iId,dId,field){
