@@ -1277,9 +1277,9 @@ function renderLineChart(){
             if(ctx.dataset.label==='Saldo'||ctx.dataset.label==='Investimento'||ctx.dataset.label==='Liquidação') return false;
             const data=ctx.dataset.data,v=data[ctx.dataIndex];
             if(v===0) return false;
-            const isLast=ctx.dataIndex===data.length-1;
-            const isPeak=v===Math.max(...data);
-            return isLast||isPeak;
+            // Só mostra rótulo no último ponto com valor
+            const lastNonZero=data.reduce((acc,val,i)=>val>0?i:acc,-1);
+            return ctx.dataIndex===lastNonZero;
           },
           anchor:'top',align:'top',
           color:ctx=>ctx.dataset.label==='Entradas'?'#1a7a52':ctx.dataset.label==='Rendimento'?'#5c3fa0':'#b83a1c',
