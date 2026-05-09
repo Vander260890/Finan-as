@@ -65,7 +65,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 .metric:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,0.08);border-color:var(--border2)}
 .metric.sel{transform:translateY(-2px);box-shadow:0 0 0 2px var(--mc,#888);border-color:var(--mc,#888)}
 .metric::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--mc,#888)}
-.metric.mg{--mc:#1a7a52}.metric.mr{--mc:#b83a1c}.metric.mb{--mc:#1855a3}.metric.ma{--mc:#8a5200}.metric.mx{--mc:#6b6960}
+.metric.mg{--mc:#1a7a52}.metric.mr{--mc:#b83a1c}.metric.mb{--mc:#1855a3}.metric.ma{--mc:#8a5200}.metric.mx{--mc:#6b6960}.metric.mp{--mc:#5c3fa0}
 .mtip{position:absolute;top:8px;right:8px;font-size:9px;color:var(--t3);opacity:0;transition:opacity .15s}
 .metric-avg{color:var(--t3);font-size:10px;font-weight:500;white-space:nowrap}
 .metric-avg[title]{cursor:help;border-bottom:1px dashed var(--t3)}
@@ -159,6 +159,13 @@ td.vb{color:var(--blue);font-weight:600}td.va{color:var(--amber);font-weight:600
 .ac-opt mark{background:none;color:var(--text);font-weight:700}
 .ac-more{padding:4px 10px;font-size:10px;color:var(--t3);border-top:1px solid var(--border);background:var(--s2);text-align:right}
 
+/* MULTI-SELECT INPUT */
+.multi-input{display:flex;flex-wrap:wrap;gap:4px;align-items:center;min-height:32px;padding:3px 8px;border:1px solid var(--border);border-radius:var(--rs);background:var(--s2);cursor:text}
+.multi-input input{border:none;background:transparent;outline:none;font-size:12px;color:var(--text);min-width:80px;flex:1;height:24px;padding:0}
+.mpills{display:flex;flex-wrap:wrap;gap:3px}
+.mpill{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;background:var(--text);color:#fff;border-radius:20px;font-size:11px;font-weight:500;white-space:nowrap}
+.mpill-x{cursor:pointer;opacity:.6;font-size:12px;line-height:1}
+.mpill-x:hover{opacity:1}
 /* SORT HEADERS */
 .sh{cursor:pointer;user-select:none;white-space:nowrap}
 .sh:hover{color:var(--text)}
@@ -281,19 +288,25 @@ td.vb{color:var(--blue);font-weight:600}td.va{color:var(--amber);font-weight:600
         </div>
         <div class="fg"><span class="fl">Nome</span>
           <div class="ac-wrap">
-            <input id="fNome" type="text" placeholder="Pesquisar…" autocomplete="off"
-              oninput="onAcInput('fNome','acNome','nome')"
-              onkeydown="onAcKey(event,'acNome','fNome')"
-              onfocus="onAcInput('fNome','acNome','nome')"/>
+            <div class="multi-input" id="nomeInput" onclick="onAcInput('fNome','acNome','nome')">
+              <div id="nomePills" class="mpills"></div>
+              <input id="fNome" type="text" placeholder="Pesquisar…" autocomplete="off"
+                oninput="onAcInput('fNome','acNome','nome')"
+                onkeydown="onAcKey(event,'acNome','fNome')"
+                onfocus="onAcInput('fNome','acNome','nome')"/>
+            </div>
             <div class="ac-drop" id="acNome"></div>
           </div>
         </div>
         <div class="fg"><span class="fl">Item</span>
           <div class="ac-wrap">
-            <input id="fItem" type="text" placeholder="Pesquisar…" autocomplete="off"
-              oninput="onAcInput('fItem','acItem','item')"
-              onkeydown="onAcKey(event,'acItem','fItem')"
-              onfocus="onAcInput('fItem','acItem','item')"/>
+            <div class="multi-input" id="itemInput" onclick="onAcInput('fItem','acItem','item')">
+              <div id="itemPills" class="mpills"></div>
+              <input id="fItem" type="text" placeholder="Pesquisar…" autocomplete="off"
+                oninput="onAcInput('fItem','acItem','item')"
+                onkeydown="onAcKey(event,'acItem','fItem')"
+                onfocus="onAcInput('fItem','acItem','item')"/>
+            </div>
             <div class="ac-drop" id="acItem"></div>
           </div>
         </div>
@@ -324,6 +337,7 @@ td.vb{color:var(--blue);font-weight:600}td.va{color:var(--amber);font-weight:600
             <span class="lg-i"><span class="lg-dot" style="background:#b83a1c"></span>Saídas</span>
             <span class="lg-i"><span class="lg-dot" style="background:#1855a3"></span>Investimento</span>
             <span class="lg-i"><span class="lg-dot" style="background:#8a5200"></span>Liquidação</span>
+          <span class="lg-i"><span class="lg-dot" style="background:#5c3fa0"></span>Rendimento</span>
           </div>
           <div style="position:relative;height:240px"><canvas id="chartMes" role="img" aria-label="Fluxo mensal">Barras mensais.</canvas></div>
         </div>
@@ -401,6 +415,8 @@ let page=1,section='dashboard';
 let chartM=null,chartP=null,chartL=null;
 let selTipo=null;
 let drillStack=[];
+let selNomes=[];   // multiple nome selection
+let selItems=[];   // multiple item selection
 let accessToken=null;
 
 // ── AUTO-REFRESH ──────────────────────────────────────────────────
@@ -540,6 +556,7 @@ function classify(item,lanc,def){
   const u=nm(item);
   if(u.includes('APLICACAO POUPANCA')||(u.includes('APLICAC')&&u.includes('POUPC')))return'investimento';
   if(u.includes('RESGATE POUPANCA')||(u.includes('RESGATE')&&u.includes('POUPC')))return'liquidacao';
+  if(u.includes('RENDIMENTO POUPANCA')||(u.includes('RENDIMENTO')&&u.includes('POUPC')))return'rendimento';
   const l=nm(lanc);
   if(l==='ENTRADAS')return'entrada';
   if(l==='SAIDAS')return'saida';
@@ -550,12 +567,13 @@ function buildRows(rows,def){
   if(!rows||!rows.length)return[];
   const f=rows[0],ks=Object.keys(f);
   const kData=ks.find(k=>nm(k)==='DATA');
-  const kAno=ks.find(k=>nm(k)==='ANO');
-  const kMes=ks.find(k=>nm(k)==='MES');
+  const kAno=ks.find(k=>nm(k)==='ANO')||ks.find(k=>nm(k).startsWith('ANO')&&nm(k).length<=4);
+  const kMes=ks.find(k=>nm(k)==='MES'||nm(k)==='MEˆS'||nm(k)==='MESANO')||ks.find(k=>nm(k).startsWith('MES')&&nm(k).length<=4);
   const kNome=dk(f,['NOME','NAME','TITULAR','PESSOA','CLIENTE']);
   const kItem=ks.find(k=>nm(k)==='ITEM');
   const kValor=ks.find(k=>nm(k)==='VALOR')||dk(f,['VALOR','VALUE','AMOUNT']);
   const kLanc=ks.find(k=>nm(k).includes('LANCAMENTO')||nm(k).includes('LANCAM'));
+  console.log('[buildRows] cols found — kAno:',kAno,'kMes:',kMes,'kData:',kData,'kItem:',kItem,'kValor:',kValor,'all keys:',ks);
   return rows.map(r=>{
     const item=kItem?String(r[kItem]||''):'';
     const nome=kNome?String(r[kNome]||''):'';
@@ -574,7 +592,8 @@ function buildRows(rows,def){
 
 
 function initSelects(){
-  const anos=[...new Set(allData.map(d=>d.anoN||d.data?.year).filter(Boolean))].sort((a,b)=>a-b);
+  const anos=[...new Set(allData.map(d=>d.anoN||d.data?.year||null).filter(v=>v&&v>2000&&v<2100))].sort((a,b)=>a-b);
+  console.log('[initSelects] anos found:', anos, 'total records:', allData.length, 'sample:', allData[0]);
   const sa=document.getElementById('fAno');sa.innerHTML='<option value="">Todos</option>';
   anos.forEach(a=>{const o=document.createElement('option');o.value=a;o.textContent=a;sa.appendChild(o);});
   const sm=document.getElementById('fMes');sm.innerHTML='<option value="">Todos</option>';
@@ -587,7 +606,7 @@ function getFV(){return{ano:document.getElementById('fAno').value,mes:document.g
 function applyFilters(){
   const fv=getFV();
   let base=allData;
-  if(section!=='dashboard'){const m={entradas:'entrada',saidas:'saida',investimentos:['investimento','liquidacao']};const t=m[section];base=base.filter(d=>Array.isArray(t)?t.includes(d.tipo):d.tipo===t);}
+  if(section!=='dashboard'){const m={entradas:'entrada',saidas:'saida',investimentos:['investimento','liquidacao','rendimento']};const t=m[section];base=base.filter(d=>Array.isArray(t)?t.includes(d.tipo):d.tipo===t);}
   if(selTipo)base=base.filter(d=>d.tipo===selTipo);
   drillStack.forEach(ds=>{
     if(ds.type==='nome')base=base.filter(d=>d.nome===ds.value);
@@ -596,15 +615,26 @@ function applyFilters(){
   });
   if(fv.ano)base=base.filter(d=>(d.anoN||d.data?.year)==fv.ano);
   if(fv.mes)base=base.filter(d=>(d.mesN||d.data?.month)==fv.mes);
-  if(fv.nome)base=base.filter(d=>d.nome.toLowerCase().includes(fv.nome));
-  if(fv.item)base=base.filter(d=>d.item.toLowerCase().includes(fv.item));
+  // Multi-select nome filter
+  if(selNomes.length>0) base=base.filter(d=>selNomes.includes(d.nome));
+  else if(fv.nome) base=base.filter(d=>d.nome.toLowerCase().includes(fv.nome));
+  // Multi-select item filter
+  if(selItems.length>0) base=base.filter(d=>selItems.includes(d.item));
+  else if(fv.item) base=base.filter(d=>d.item.toLowerCase().includes(fv.item));
   if(fv.vMin)base=base.filter(d=>d.valor>=fv.vMin);
   if(fv.vMax<Infinity)base=base.filter(d=>d.valor<=fv.vMax);
   filtered=base;page=1;
   renderBC();renderPills();renderMetrics();renderDrill();renderCharts();renderTable();updateSb();
 }
 
-function clearAll(){['fAno','fMes'].forEach(id=>document.getElementById(id).value='');['fNome','fItem','fVMin','fVMax'].forEach(id=>document.getElementById(id).value='');closeAc('acNome');closeAc('acItem');drillStack=[];selTipo=null;applyFilters();}
+function clearAll(){
+  ['fAno','fMes'].forEach(id=>document.getElementById(id).value='');
+  ['fNome','fItem','fVMin','fVMax'].forEach(id=>document.getElementById(id).value='');
+  closeAc('acNome');closeAc('acItem');
+  selNomes=[];selItems=[];
+  renderMultiPills();
+  drillStack=[];selTipo=null;applyFilters();
+}
 
 function setSection(s,el){section=s;document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));el.classList.add('active');drillStack=[];selTipo=null;applyFilters();}
 
@@ -625,8 +655,10 @@ function renderPills(){
   const fv=getFV(),pills=[];
   if(fv.ano)pills.push({l:'Ano: '+fv.ano,c:()=>{document.getElementById('fAno').value='';applyFilters();}});
   if(fv.mes)pills.push({l:'Mês: '+MESES[fv.mes-1],c:()=>{document.getElementById('fMes').value='';applyFilters();}});
-  if(fv.nome)pills.push({l:'Nome: "'+fv.nome+'"',c:()=>{document.getElementById('fNome').value='';closeAc('acNome');applyFilters();}});
-  if(fv.item)pills.push({l:'Item: "'+fv.item+'"',c:()=>{document.getElementById('fItem').value='';closeAc('acItem');applyFilters();}});
+  selNomes.forEach(v=>pills.push({l:'Nome: '+v,c:()=>{removeSelNome(v);}}));
+  if(!selNomes.length&&fv.nome)pills.push({l:'Nome: "'+fv.nome+'"',c:()=>{document.getElementById('fNome').value='';closeAc('acNome');applyFilters();}});
+  selItems.forEach(v=>pills.push({l:'Item: '+v,c:()=>{removeSelItem(v);}}));
+  if(!selItems.length&&fv.item)pills.push({l:'Item: "'+fv.item+'"',c:()=>{document.getElementById('fItem').value='';closeAc('acItem');applyFilters();}});
   if(selTipo){const tl={entrada:'Entradas',saida:'Saídas',investimento:'Investimento',liquidacao:'Liquidação'};pills.push({l:'Tipo: '+tl[selTipo],c:()=>{selTipo=null;applyFilters();}});}
   drillStack.forEach((ds,i)=>pills.push({l:ds.label,c:()=>{drillStack=drillStack.slice(0,i);applyFilters();}}));
   document.getElementById('pills').innerHTML=pills.map(p=>`<span class="pill">${p.l}<span class="pill-x" onclick="(${p.c})()">×</span></span>`).join('');
@@ -654,6 +686,7 @@ function renderMetrics(){
   const s =filtered.filter(d=>d.tipo==='saida').reduce((s,d)=>s+d.valor,0);
   const iv=filtered.filter(d=>d.tipo==='investimento').reduce((s,d)=>s+d.valor,0);
   const lq=filtered.filter(d=>d.tipo==='liquidacao').reduce((s,d)=>s+d.valor,0);
+  const rend=filtered.filter(d=>d.tipo==='rendimento').reduce((s,d)=>s+d.valor,0);
   const sl=e-s;
 
   // Count distinct months in the full filtered set (all tipos)
@@ -683,9 +716,12 @@ function renderMetrics(){
     {label:'Saídas',         val:fmtR(s),  cls:'mr',vcls:'r', sub:mkSub(0,'saida',avgS,nMS),       tipo:'saida',        tip:'▼ detalhar'},
     {label:'Saldo',          val:fmtR(sl), cls:sl>=0?'mg':'mr',vcls:sl>=0?'g':'r',
       sub:`${sl>=0?'Positivo':'Negativo'} · <span class="metric-avg" title="Média por mês (${mLabel})">⌀ ${fmtR(avgSL)}/mês</span>`,
-      tipo:null,tip:''},
+      tipo:'saldo',tip:'▼ detalhar'},
     {label:'Aplic. Poupança',val:fmtR(iv), cls:'mb',vcls:'b', sub:mkSub(0,'investimento',avgIV,nMIV),tipo:'investimento', tip:'▼ detalhar'},
     {label:'Resg. Poupança', val:fmtR(lq), cls:'ma',vcls:'a', sub:mkSub(0,'liquidacao',avgLQ,nMLQ), tipo:'liquidacao',   tip:'▼ detalhar'},
+    {label:'Rendimento Poupança',val:fmtR(rend),cls:'mp',vcls:'',
+      sub:`${filtered.filter(d=>d.tipo==='rendimento').length} lançamentos · <span class="metric-avg">⌀ ${fmtR(rend/Math.max(1,countMonths(filtered.filter(d=>d.tipo==='rendimento'))))}/mês</span>`,
+      tipo:'rendimento',tip:'▼ detalhar'},
     {label:'Registros',      val:filtered.length.toLocaleString('pt-BR'),
       cls:'mx',vcls:'',sub:`total · <span class="metric-avg">÷ ${mLabel}</span>`,tipo:null,tip:''},
   ];
@@ -700,6 +736,13 @@ function renderMetrics(){
 }
 
 function clickMetric(tipo){
+  if(tipo==='saldo'){
+    selTipo=selTipo==='saldo'?null:'saldo';
+    drillStack=[];
+    applyFilters();
+    if(selTipo)setTimeout(()=>document.getElementById('drillArea').scrollIntoView({behavior:'smooth',block:'nearest'}),80);
+    return;
+  }
   selTipo=selTipo===tipo?null:tipo;
   drillStack=[];
   applyFilters();
@@ -707,18 +750,81 @@ function clickMetric(tipo){
 }
 
 /* ── DRILL ──────────────────────────────────────────────────────── */
-const TCOLOR={entrada:'#1a7a52',saida:'#b83a1c',investimento:'#1855a3',liquidacao:'#8a5200'};
-const TLABEL={entrada:'Entradas',saida:'Saídas',investimento:'Investimento',liquidacao:'Liquidação'};
+const TCOLOR={entrada:'#1a7a52',saida:'#b83a1c',investimento:'#1855a3',liquidacao:'#8a5200',saldo:'#6b6960',rendimento:'#5c3fa0'};
+const TLABEL={entrada:'Entradas',saida:'Saídas',investimento:'Investimento',liquidacao:'Liquidação',rendimento:'Rendimento Poupança'};
 const AVATARCOLORS=['#e6f5ee','#faeae5','#e6eef9','#fdf0d6','#eeebf9','#e8e5df'];
 const AVATARTXT=['#1a7a52','#b83a1c','#1855a3','#8a5200','#5c3fa0','#6b6960'];
 
 function renderDrill(){
   const el=document.getElementById('drillArea');
   if(!selTipo&&!drillStack.length){el.innerHTML='';return;}
-  const color=selTipo?TCOLOR[selTipo]:'#1a1a18';
+  const color=selTipo?TCOLOR[selTipo]||'#6b6960':'#1a1a18';
   const hasnome=drillStack.find(d=>d.type==='nome');
   const hasitem=drillStack.find(d=>d.type==='item');
   let html='';
+
+  // ── SALDO DRILL ──────────────────────────────────────────────────
+  if(selTipo==='saldo'){
+    // Group by year-month
+    const byM={};
+    filtered.forEach(d=>{
+      const ay=d.anoN||d.data?.year,am=d.mesN||d.data?.month;
+      if(!ay||!am)return;
+      const k=`${ay}-${String(am).padStart(2,'0')}`;
+      if(!byM[k])byM[k]={e:0,s:0,label:MESES[am-1]+'/'+String(ay).slice(2)};
+      if(d.tipo==='entrada')byM[k].e+=d.valor;
+      else if(d.tipo==='saida')byM[k].s+=d.valor;
+    });
+    const keys=Object.keys(byM).sort();
+    const byY={};
+    keys.forEach(k=>{
+      const y=k.split('-')[0];
+      if(!byY[y])byY[y]={e:0,s:0};
+      byY[y].e+=byM[k].e;byY[y].s+=byM[k].s;
+    });
+
+    html+=`<div class="drill-panel">
+      <div class="drill-hd">
+        <span class="drill-title" style="color:#6b6960">Saldo — evolução mensal <span class="drill-hint">entradas menos saídas</span></span>
+        <button class="drill-close" onclick="selTipo=null;drillStack=[];applyFilters()">×</button>
+      </div>
+      <div class="drill-body">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:16px">
+          ${Object.entries(byY).sort((a,b)=>a[0]-b[0]).map(([ano,v])=>{
+            const sl=v.e-v.s;const pos=sl>=0;
+            return`<div style="border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;cursor:pointer;background:var(--surface)"
+              onclick="drillSaldoAno('${ano}')">
+              <div style="font-size:11px;color:var(--t2);font-weight:600;margin-bottom:4px">${ano}</div>
+              <div style="font-size:16px;font-weight:700;color:${pos?'var(--green)':'var(--red)'}">${fmtR(sl)}</div>
+              <div style="font-size:10px;color:var(--t3);margin-top:2px">E: ${fmtR(v.e)} · S: ${fmtR(v.s)}</div>
+            </div>`;
+          }).join('')}
+        </div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead><tr>
+              <th style="padding:6px 10px;text-align:left;font-size:10px;color:var(--t3);text-transform:uppercase;border-bottom:1px solid var(--border)">Mês</th>
+              <th style="padding:6px 10px;text-align:right;font-size:10px;color:var(--t3);text-transform:uppercase;border-bottom:1px solid var(--border)">Entradas</th>
+              <th style="padding:6px 10px;text-align:right;font-size:10px;color:var(--t3);text-transform:uppercase;border-bottom:1px solid var(--border)">Saídas</th>
+              <th style="padding:6px 10px;text-align:right;font-size:10px;color:var(--t3);text-transform:uppercase;border-bottom:1px solid var(--border)">Saldo</th>
+            </tr></thead>
+            <tbody>
+              ${keys.map(k=>{
+                const sl=byM[k].e-byM[k].s;const pos=sl>=0;
+                return`<tr style="border-bottom:1px solid var(--border)">
+                  <td style="padding:7px 10px;font-weight:500">${byM[k].label}</td>
+                  <td style="padding:7px 10px;text-align:right;color:var(--green)">${fmtR(byM[k].e)}</td>
+                  <td style="padding:7px 10px;text-align:right;color:var(--red)">${fmtR(byM[k].s)}</td>
+                  <td style="padding:7px 10px;text-align:right;font-weight:700;color:${pos?'var(--green)':'var(--red)'}">${fmtR(sl)}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>`;
+    el.innerHTML=html;return;
+  }
 
   // NÍVEL 1 — por pessoa
   if(selTipo&&!hasnome){
@@ -823,6 +929,12 @@ function renderDrill(){
   el.innerHTML=html;
 }
 
+function drillSaldoAno(ano){
+  // Filter by year when clicking a year card in saldo drill
+  document.getElementById('fAno').value=ano;
+  applyFilters();
+}
+
 function drillNome(nome){
   drillStack=drillStack.filter(d=>d.type!=='nome'&&d.type!=='item');
   drillStack.push({type:'nome',value:nome,label:nome});
@@ -866,12 +978,17 @@ function renderCharts(){
     if(!ay||!am) return;
     const k=`${ay}-${String(am).padStart(2,'0')}`;
     if(!byM[k])byM[k]={e:0,s:0,iv:0,lq:0};
-    if(d.tipo==='entrada')           byM[k].e +=d.valor;
-    else if(d.tipo==='saida')        byM[k].s +=d.valor;
-    else if(d.tipo==='investimento') byM[k].iv+=d.valor;
-    else if(d.tipo==='liquidacao')   byM[k].lq+=d.valor;
+    if(d.tipo==='entrada')           byM[k].e  +=d.valor;
+    else if(d.tipo==='saida')        byM[k].s  +=d.valor;
+    else if(d.tipo==='investimento') byM[k].iv +=d.valor;
+    else if(d.tipo==='liquidacao')   byM[k].lq +=d.valor;
+    else if(d.tipo==='rendimento')   byM[k].rd +=d.valor;
   });
   const mks=Object.keys(byM).sort().slice(-18);
+  // Debug: if no data, try without date filter
+  if(mks.length===0 && filtered.length>0){
+    console.warn('No date data found in filtered records. Sample:', filtered.slice(0,3).map(d=>({anoN:d.anoN,mesN:d.mesN,data:d.data})));
+  }
   const mls=mks.map(k=>{const[y,m]=k.split('-');return MESES[+m-1]+'/'+y.slice(2);});
 
   if(chartM) chartM.destroy();
@@ -881,7 +998,8 @@ function renderCharts(){
       {label:'Entradas',    data:mks.map(k=>Math.round(byM[k].e)), backgroundColor:'#1a7a52',borderRadius:3},
       {label:'Saídas',      data:mks.map(k=>Math.round(byM[k].s)), backgroundColor:'#b83a1c',borderRadius:3},
       {label:'Investimento',data:mks.map(k=>Math.round(byM[k].iv)),backgroundColor:'#1855a3',borderRadius:3},
-      {label:'Liquidação',  data:mks.map(k=>Math.round(byM[k].lq)),backgroundColor:'#8a5200',borderRadius:3},
+      {label:'Liquidação',  data:mks.map(k=>Math.round(byM[k].lq||0)),backgroundColor:'#8a5200',borderRadius:3},
+      {label:'Rendimento',   data:mks.map(k=>Math.round(byM[k].rd||0)),backgroundColor:'#5c3fa0',borderRadius:3},
     ]},
     options:{
       responsive:true,maintainAspectRatio:false,
@@ -900,7 +1018,7 @@ function renderCharts(){
       layout:{padding:{top:22}},
       scales:{
         x:{ticks:{font:{size:10},autoSkip:true,maxRotation:45},grid:{display:false}},
-        y:{ticks:{font:{size:10},callback:v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0})},grid:{color:'rgba(0,0,0,0.04)'}}
+        y:{ticks:{font:{size:10},callback:v=>v===0?'R$ 0':'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0})},grid:{color:'rgba(0,0,0,0.04)'}}
       },
       onClick:(evt,els)=>{
         if(!els.length) return;
@@ -914,12 +1032,13 @@ function renderCharts(){
   });
 
   // ── DONUT CHART ────────────────────────────────────────────────────
-  const tots=[0,0,0,0];
+  const tots=[0,0,0,0,0];
   filtered.forEach(d=>{
     if(d.tipo==='entrada')           tots[0]+=d.valor;
     else if(d.tipo==='saida')        tots[1]+=d.valor;
     else if(d.tipo==='investimento') tots[2]+=d.valor;
     else if(d.tipo==='liquidacao')   tots[3]+=d.valor;
+    else if(d.tipo==='rendimento')   tots[4]+=d.valor;
   });
   const totalDonut=tots.reduce((a,b)=>a+b,0);
 
@@ -927,10 +1046,10 @@ function renderCharts(){
   chartP=new Chart(document.getElementById('chartPizza'),{
     type:'doughnut',
     data:{
-      labels:['Entradas','Saídas','Investimento','Liquidação'],
+      labels:['Entradas','Saídas','Investimento','Liquidação','Rendimento'],
       datasets:[{
         data:tots.map(v=>Math.round(v)),
-        backgroundColor:['#1a7a52','#b83a1c','#1855a3','#8a5200'],
+        backgroundColor:['#1a7a52','#b83a1c','#1855a3','#8a5200','#5c3fa0'],
         borderWidth:0,hoverOffset:5
       }]
     },
@@ -950,7 +1069,7 @@ function renderCharts(){
       },
       onClick:(evt,els)=>{
         if(!els.length) return;
-        const ts=['entrada','saida','investimento','liquidacao'];
+        const ts=['entrada','saida','investimento','liquidacao','rendimento'];
         const t=ts[els[0].index];
         selTipo=selTipo===t?null:t;drillStack=[];applyFilters();
       }
@@ -1027,7 +1146,7 @@ function renderLineChart(){
       layout:{padding:{top:24}},
       scales:{
         x:{ticks:{font:{size:10},autoSkip:true,maxRotation:45},grid:{display:false}},
-        y:{ticks:{font:{size:10},callback:v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0})},grid:{color:'rgba(0,0,0,0.04)'},beginAtZero:true}
+        y:{ticks:{font:{size:10},callback:v=>v===0?'R$ 0':'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0})},grid:{color:'rgba(0,0,0,0.04)'},beginAtZero:true}
       }
     }
   });
@@ -1122,7 +1241,30 @@ let acHL={acNome:-1,acItem:-1};
 function getAcOpts(field,q){const vals=[...new Set(allData.map(d=>d[field]).filter(v=>v&&v.trim()))].sort();if(!q)return vals.slice(0,80);return vals.filter(v=>v.toLowerCase().includes(q.toLowerCase())).slice(0,80);}
 function hlMatch(t,q){if(!q)return t;const i=t.toLowerCase().indexOf(q.toLowerCase());if(i<0)return t;return t.slice(0,i)+'<mark>'+t.slice(i,i+q.length)+'</mark>'+t.slice(i+q.length);}
 function onAcInput(iId,dId,field){const inp=document.getElementById(iId),drop=document.getElementById(dId);const q=inp.value;acHL[dId]=-1;const opts=getAcOpts(field,q);const tot=[...new Set(allData.map(d=>d[field]).filter(v=>v&&v.trim()))].length;drop.innerHTML=(!opts.length)?'<div class="ac-opt" style="color:var(--t3)">Nenhum resultado</div>':opts.map((o,i)=>`<div class="ac-opt" data-val="${o.replace(/"/g,'&quot;')}" data-idx="${i}" onmousedown="pickAc('${iId}','${dId}',this)" onmouseover="hlAc('${dId}',${i})">${hlMatch(o,q)}</div>`).join('')+(opts.length<tot?`<div class="ac-more">${opts.length} de ${tot}</div>`:'');drop.classList.add('open');applyFilters();}
-function pickAc(iId,dId,el){document.getElementById(iId).value=el.dataset.val;closeAc(dId);applyFilters();}
+function pickAc(iId,dId,el){
+  const val=el.dataset.val;
+  if(iId==='fNome'){
+    if(!selNomes.includes(val)){selNomes.push(val);}
+    document.getElementById(iId).value='';
+    renderMultiPills();closeAc(dId);applyFilters();return;
+  }
+  if(iId==='fItem'){
+    if(!selItems.includes(val)){selItems.push(val);}
+    document.getElementById(iId).value='';
+    renderMultiPills();closeAc(dId);applyFilters();return;
+  }
+  document.getElementById(iId).value=val;closeAc(dId);applyFilters();
+}
+
+function removeSelNome(v){selNomes=selNomes.filter(x=>x!==v);renderMultiPills();applyFilters();}
+function removeSelItem(v){selItems=selItems.filter(x=>x!==v);renderMultiPills();applyFilters();}
+
+function renderMultiPills(){
+  const np=document.getElementById('nomePills');
+  const ip=document.getElementById('itemPills');
+  if(np)np.innerHTML=selNomes.map(v=>`<span class="mpill">${v}<span class="mpill-x" onmousedown="removeSelNome('${v.replace(/'/g,"\\'")}')">×</span></span>`).join('');
+  if(ip)ip.innerHTML=selItems.map(v=>`<span class="mpill">${v}<span class="mpill-x" onmousedown="removeSelItem('${v.replace(/'/g,"\\'")}')">×</span></span>`).join('');
+}
 function hlAc(dId,idx){acHL[dId]=idx;document.querySelectorAll(`#${dId} .ac-opt`).forEach((e,i)=>e.classList.toggle('hl',i===idx));}
 function closeAc(dId){document.getElementById(dId).classList.remove('open');acHL[dId]=-1;}
 function onAcKey(e,dId,iId){const drop=document.getElementById(dId),items=drop.querySelectorAll('.ac-opt');if(!drop.classList.contains('open'))return;if(e.key==='ArrowDown'){e.preventDefault();acHL[dId]=Math.min(acHL[dId]+1,items.length-1);hlAc(dId,acHL[dId]);items[acHL[dId]]?.scrollIntoView({block:'nearest'});}else if(e.key==='ArrowUp'){e.preventDefault();acHL[dId]=Math.max(acHL[dId]-1,0);hlAc(dId,acHL[dId]);items[acHL[dId]]?.scrollIntoView({block:'nearest'});}else if(e.key==='Enter'){e.preventDefault();if(acHL[dId]>=0&&items[acHL[dId]]){document.getElementById(iId).value=items[acHL[dId]].dataset.val;closeAc(dId);applyFilters();}}else if(e.key==='Escape')closeAc(dId);}
