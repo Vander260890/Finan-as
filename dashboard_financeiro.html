@@ -731,6 +731,49 @@ function clearAll(){
   drillStack=[];selTipo=null;applyFilters();
 }
 
+function applyFilters(){
+  const fv=getFV();
+  let base=allData;
+
+  // Section filter
+  if(section!=='dashboard'){
+    const m={entradas:'entrada',saidas:'saida',investimentos:['investimento','liquidacao','rendimento']};
+    const t=m[section];
+    base=base.filter(d=>Array.isArray(t)?t.includes(d.tipo):d.tipo===t);
+  }
+
+  // Tipo filter from metric click
+  if(selTipo&&selTipo!=='saldo') base=base.filter(d=>d.tipo===selTipo);
+
+  // Drill stack filters
+  drillStack.forEach(ds=>{
+    if(ds.type==='nome') base=base.filter(d=>d.nome===ds.value);
+    if(ds.type==='item') base=base.filter(d=>d.item===ds.value);
+    if(ds.type==='mes'){const[y,m]=ds.value.split('-');base=base.filter(d=>(d.anoN||d.data?.year)==y&&(d.mesN||d.data?.month)==m);}
+  });
+
+  // Multi-select filters
+  if(selAnos.length>0)  base=base.filter(d=>selAnos.includes(String(d.anoN||d.data?.year||'')));
+  if(selMeses.length>0) base=base.filter(d=>selMeses.includes(String(d.mesN||d.data?.month||'')));
+  if(selNomes.length>0) base=base.filter(d=>selNomes.includes(d.nome));
+  else if(fv.nome)      base=base.filter(d=>d.nome.toLowerCase().includes(fv.nome));
+  if(selItems.length>0) base=base.filter(d=>selItems.includes(d.item));
+  else if(fv.item)      base=base.filter(d=>d.item.toLowerCase().includes(fv.item));
+  if(fv.vMin) base=base.filter(d=>d.valor>=fv.vMin);
+  if(fv.vMax<Infinity) base=base.filter(d=>d.valor<=fv.vMax);
+
+  filtered=base;
+  page=1;
+  renderBC();renderPills();renderMetrics();renderDrill();renderCharts();renderTable();updateSb();
+}
+
+function getFV(){return{
+  nome:document.getElementById('fNome')?.value.toLowerCase().trim()||'',
+  item:document.getElementById('fItem')?.value.toLowerCase().trim()||'',
+  vMin:parseFloat(document.getElementById('fVMin')?.value)||0,
+  vMax:parseFloat(document.getElementById('fVMax')?.value)||Infinity
+};}
+
 function setSection(s,el){section=s;document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));el.classList.add('active');drillStack=[];selTipo=null;applyFilters();}
 
 /* ── BREADCRUMB ─────────────────────────────────────────────────── */
