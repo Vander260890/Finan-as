@@ -156,6 +156,7 @@ td.vb{color:var(--blue);font-weight:600}td.va{color:var(--amber);font-weight:600
 .ac-opt{padding:7px 10px;font-size:12px;color:var(--text);cursor:pointer;border-bottom:1px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background .1s}
 .ac-opt:last-child{border-bottom:none}
 .ac-opt:hover,.ac-opt.hl{background:var(--s2)}
+.ac-opt.ac-sel{background:var(--gbg);font-weight:500}
 .ac-opt mark{background:none;color:var(--text);font-weight:700}
 .ac-more{padding:4px 10px;font-size:10px;color:var(--t3);border-top:1px solid var(--border);background:var(--s2);text-align:right}
 
@@ -280,37 +281,51 @@ td.vb{color:var(--blue);font-weight:600}td.va{color:var(--amber);font-weight:600
 
       <!-- FILTERS -->
       <div class="filter-bar">
+        <!-- ANO multi -->
         <div class="fg"><span class="fl">Ano</span>
-          <select id="fAno" onchange="applyFilters()"><option value="">Todos</option></select>
+          <div class="ac-wrap">
+            <div class="multi-input" onclick="toggleDrop('acAno',event)">
+              <div id="anoPills" class="mpills"></div>
+              <input id="fAno" type="text" placeholder="Selecionar…" readonly style="cursor:pointer"/>
+            </div>
+            <div class="ac-drop" id="acAno"></div>
+          </div>
         </div>
+        <!-- MES multi -->
         <div class="fg"><span class="fl">Mês</span>
-          <select id="fMes" onchange="applyFilters()"><option value="">Todos</option></select>
+          <div class="ac-wrap">
+            <div class="multi-input" onclick="toggleDrop('acMes',event)">
+              <div id="mesPills" class="mpills"></div>
+              <input id="fMes" type="text" placeholder="Selecionar…" readonly style="cursor:pointer"/>
+            </div>
+            <div class="ac-drop" id="acMes"></div>
+          </div>
         </div>
+        <!-- NOME multi -->
         <div class="fg"><span class="fl">Nome</span>
           <div class="ac-wrap">
-            <div class="multi-input" id="nomeInput" onclick="onAcInput('fNome','acNome','nome')">
+            <div class="multi-input">
               <div id="nomePills" class="mpills"></div>
               <input id="fNome" type="text" placeholder="Pesquisar…" autocomplete="off"
-                oninput="onAcInput('fNome','acNome','nome')"
-                onkeydown="onAcKey(event,'acNome','fNome')"
-                onfocus="onAcInput('fNome','acNome','nome')"/>
+                oninput="onAcInputMulti('fNome','acNome','nome')"
+                onfocus="onAcInputMulti('fNome','acNome','nome')"/>
             </div>
             <div class="ac-drop" id="acNome"></div>
           </div>
         </div>
+        <!-- ITEM multi -->
         <div class="fg"><span class="fl">Item</span>
           <div class="ac-wrap">
-            <div class="multi-input" id="itemInput" onclick="onAcInput('fItem','acItem','item')">
+            <div class="multi-input">
               <div id="itemPills" class="mpills"></div>
               <input id="fItem" type="text" placeholder="Pesquisar…" autocomplete="off"
-                oninput="onAcInput('fItem','acItem','item')"
-                onkeydown="onAcKey(event,'acItem','fItem')"
-                onfocus="onAcInput('fItem','acItem','item')"/>
+                oninput="onAcInputMulti('fItem','acItem','item')"
+                onfocus="onAcInputMulti('fItem','acItem','item')"/>
             </div>
             <div class="ac-drop" id="acItem"></div>
           </div>
         </div>
-        <div class="fg"><span class="fl">Valor mín.</span>
+                <div class="fg"><span class="fl">Valor mín.</span>
           <input id="fVMin" type="number" placeholder="R$ 0" oninput="applyFilters()"/>
         </div>
         <div class="fg"><span class="fl">Valor máx.</span>
@@ -415,6 +430,8 @@ let page=1,section='dashboard';
 let chartM=null,chartP=null,chartL=null;
 let selTipo=null;
 let drillStack=[];
+let selAnos=[];    // multiple ano selection
+let selMeses=[];   // multiple mes selection
 let selNomes=[];   // multiple nome selection
 let selItems=[];   // multiple item selection
 let accessToken=null;
@@ -550,7 +567,23 @@ function parseMes(s){
 function nm(s){return String(s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim()}
 function dk(o,cs){const ks=Object.keys(o);for(const c of cs){const f=ks.find(k=>nm(k).includes(nm(c)));if(f)return f;}return null;}
 function pv(v){if(v===null||v===undefined||v==='')return 0;return Math.abs(parseFloat(String(v).replace(/[R$\s]/g,'').replace(/\./g,'').replace(',','.'))||0);}
-function pd(s){if(!s)return null;s=String(s).trim();const p=s.split(/[\/\-\.]/);if(p.length===3){let d=parseInt(p[0]),m=parseInt(p[1]),y=parseInt(p[2]);if(y<100)y+=2000;if(d>31){[d,y]=[y,d];}return{day:d,month:m,year:y,str:`${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${y}`};}return null;}
+function pd(s){
+  if(!s) return null;
+  s=String(s).trim();
+  // Handle DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
+  const p=s.split(/[\/\-\.]/);
+  if(p.length===3){
+    let d=parseInt(p[0]),m=parseInt(p[1]),y=parseInt(p[2]);
+    if(y<100) y+=2000;
+    if(d>31){[d,y]=[y,d];} // swap if year came first
+    if(d>=1&&d<=31&&m>=1&&m<=12&&y>=2000&&y<=2100)
+      return{day:d,month:m,year:y,str:`${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${y}`};
+  }
+  // Handle timestamp format like "02/04/2026 10:43:08" - take only date part
+  const datePart=s.split(' ')[0];
+  if(datePart!==s){return pd(datePart);}
+  return null;
+}
 
 function classify(item,lanc,def){
   const u=nm(item);
@@ -566,14 +599,16 @@ function classify(item,lanc,def){
 function buildRows(rows,def){
   if(!rows||!rows.length)return[];
   const f=rows[0],ks=Object.keys(f);
-  const kData=ks.find(k=>nm(k)==='DATA');
-  const kAno=ks.find(k=>nm(k)==='ANO')||ks.find(k=>nm(k).startsWith('ANO')&&nm(k).length<=4);
-  const kMes=ks.find(k=>nm(k)==='MES'||nm(k)==='MEˆS'||nm(k)==='MESANO')||ks.find(k=>nm(k).startsWith('MES')&&nm(k).length<=4);
+  // DATA: coluna exata 'DATA' — nunca usar Carimbo de data/hora
+  const kData = ks.find(k=>nm(k)==='DATA');
+  const kAno = ks.find(k=>nm(k)==='ANO')
+    || ks.find(k=>nm(k).startsWith('ANO')&&nm(k).length<=4);
+  const kMes = ks.find(k=>nm(k)==='MES'||nm(k)==='MEˆS')
+    || ks.find(k=>nm(k).startsWith('MES')&&nm(k).length<=4);
   const kNome=dk(f,['NOME','NAME','TITULAR','PESSOA','CLIENTE']);
   const kItem=ks.find(k=>nm(k)==='ITEM');
   const kValor=ks.find(k=>nm(k)==='VALOR')||dk(f,['VALOR','VALUE','AMOUNT']);
   const kLanc=ks.find(k=>nm(k).includes('LANCAMENTO')||nm(k).includes('LANCAM'));
-  console.log('[buildRows] cols found — kAno:',kAno,'kMes:',kMes,'kData:',kData,'kItem:',kItem,'kValor:',kValor,'all keys:',ks);
   return rows.map(r=>{
     const item=kItem?String(r[kItem]||''):'';
     const nome=kNome?String(r[kNome]||''):'';
@@ -583,8 +618,15 @@ function buildRows(rows,def){
     const ano=kAno?String(r[kAno]||''):'';
     const mesRaw=kMes?String(r[kMes]||''):'';
     if(!valor&&!nome&&!item)return null;
-    const mesN=parseMes(mesRaw),anoN=parseInt(ano)||data?.year||null;
-    const dataF=(anoN&&mesN)?{year:anoN,month:mesN,day:data?.day||1,str:`${String(data?.day||1).padStart(2,'0')}/${String(mesN).padStart(2,'0')}/${anoN}`}:data;
+    const mesN=parseMes(mesRaw);
+    // Year: from ANO column, or from parsed DATA column
+    const anoN=parseInt(ano)||data?.year||null;
+    // Day: from parsed DATA column
+    const dayN=data?.day||1;
+    // Build final date object
+    const dataF=(anoN&&mesN)
+      ?{year:anoN,month:mesN,day:dayN,str:`${String(dayN).padStart(2,'0')}/${String(mesN).padStart(2,'0')}/${anoN}`}
+      :data;
     return{data:dataF,nome:nome.trim(),item:item.trim(),valor,tipo:classify(item,lanc,def),mesN:mesN||data?.month||null,anoN:anoN||data?.year||null};
   }).filter(Boolean);
 }
@@ -592,46 +634,99 @@ function buildRows(rows,def){
 
 
 function initSelects(){
+  // Populate ano dropdown
   const anos=[...new Set(allData.map(d=>d.anoN||d.data?.year||null).filter(v=>v&&v>2000&&v<2100))].sort((a,b)=>a-b);
-  console.log('[initSelects] anos found:', anos, 'total records:', allData.length, 'sample:', allData[0]);
-  const sa=document.getElementById('fAno');sa.innerHTML='<option value="">Todos</option>';
-  anos.forEach(a=>{const o=document.createElement('option');o.value=a;o.textContent=a;sa.appendChild(o);});
-  const sm=document.getElementById('fMes');sm.innerHTML='<option value="">Todos</option>';
-  MESES.forEach((m,i)=>{const o=document.createElement('option');o.value=i+1;o.textContent=m;sm.appendChild(o);});
+  const acAno=document.getElementById('acAno');
+  if(acAno){
+    acAno.innerHTML=anos.map(a=>`<div class="ac-opt${selAnos.includes(String(a))?' ac-sel':''}" data-val="${a}"
+      onclick="event.stopPropagation();toggleMulti('ano','${a}')">${a}${selAnos.includes(String(a))?'<span style="float:right;color:#1a7a52">✓</span>':''}</div>`).join('');
+  }
+
+  const acMes=document.getElementById('acMes');
+  if(acMes){
+    acMes.innerHTML=MESES.map((m,i)=>{const v=String(i+1);return`<div class="ac-opt${selMeses.includes(v)?' ac-sel':''}" data-val="${v}"
+      onclick="event.stopPropagation();toggleMulti('mes','${v}')">${m}${selMeses.includes(v)?'<span style="float:right;color:#1a7a52">✓</span>':''}</div>`;}).join('');
+  }
 }
 
-/* ── FILTERS ─────────────────────────────────────────────────────── */
-function getFV(){return{ano:document.getElementById('fAno').value,mes:document.getElementById('fMes').value,nome:document.getElementById('fNome').value.toLowerCase().trim(),item:document.getElementById('fItem').value.toLowerCase().trim(),vMin:parseFloat(document.getElementById('fVMin').value)||0,vMax:parseFloat(document.getElementById('fVMax').value)||Infinity};}
+function toggleDrop(dropId, event){
+  if(event) event.stopPropagation();
+  const drop=document.getElementById(dropId);
+  if(!drop) return;
+  const isOpen=drop.classList.contains('open');
+  document.querySelectorAll('.ac-drop.open').forEach(d=>{if(d.id!==dropId)d.classList.remove('open');});
+  if(isOpen){ drop.classList.remove('open'); return; }
+  populateDrop(dropId);
+  drop.classList.add('open');
+}
 
-function applyFilters(){
-  const fv=getFV();
-  let base=allData;
-  if(section!=='dashboard'){const m={entradas:'entrada',saidas:'saida',investimentos:['investimento','liquidacao','rendimento']};const t=m[section];base=base.filter(d=>Array.isArray(t)?t.includes(d.tipo):d.tipo===t);}
-  if(selTipo)base=base.filter(d=>d.tipo===selTipo);
-  drillStack.forEach(ds=>{
-    if(ds.type==='nome')base=base.filter(d=>d.nome===ds.value);
-    if(ds.type==='item')base=base.filter(d=>d.item===ds.value);
-    if(ds.type==='mes'){const[y,m]=ds.value.split('-');base=base.filter(d=>(d.anoN||d.data?.year)==y&&(d.mesN||d.data?.month)==m);}
-  });
-  if(fv.ano)base=base.filter(d=>(d.anoN||d.data?.year)==fv.ano);
-  if(fv.mes)base=base.filter(d=>(d.mesN||d.data?.month)==fv.mes);
-  // Multi-select nome filter
-  if(selNomes.length>0) base=base.filter(d=>selNomes.includes(d.nome));
-  else if(fv.nome) base=base.filter(d=>d.nome.toLowerCase().includes(fv.nome));
-  // Multi-select item filter
-  if(selItems.length>0) base=base.filter(d=>selItems.includes(d.item));
-  else if(fv.item) base=base.filter(d=>d.item.toLowerCase().includes(fv.item));
-  if(fv.vMin)base=base.filter(d=>d.valor>=fv.vMin);
-  if(fv.vMax<Infinity)base=base.filter(d=>d.valor<=fv.vMax);
-  filtered=base;page=1;
-  renderBC();renderPills();renderMetrics();renderDrill();renderCharts();renderTable();updateSb();
+function populateDrop(dropId){
+  const drop=document.getElementById(dropId);
+  if(!drop) return;
+  if(dropId==='acAno'){
+    const anos=[...new Set(allData.map(d=>d.anoN||d.data?.year||null).filter(v=>v&&v>2000&&v<2100))].sort((a,b)=>a-b);
+    drop.innerHTML=anos.map(a=>`<div class="ac-opt${selAnos.includes(String(a))?' ac-sel':''}"
+      onclick="event.stopPropagation();toggleSel('ano','${a}')">
+      ${a}${selAnos.includes(String(a))?'<span style="float:right;color:#1a7a52;font-size:13px">✓</span>':''}
+    </div>`).join('');
+  } else if(dropId==='acMes'){
+    drop.innerHTML=MESES.map((m,i)=>{const v=String(i+1);return`<div class="ac-opt${selMeses.includes(v)?' ac-sel':''}"
+      onclick="event.stopPropagation();toggleSel('mes','${v}')">
+      ${m}${selMeses.includes(v)?'<span style="float:right;color:#1a7a52;font-size:13px">✓</span>':''}
+    </div>`;}).join('');
+  }
+}
+
+function toggleSel(field, val){
+  val=String(val);
+  if(field==='ano'){
+    selAnos=selAnos.includes(val)?selAnos.filter(v=>v!==val):[...selAnos,val];
+  } else if(field==='mes'){
+    selMeses=selMeses.includes(val)?selMeses.filter(v=>v!==val):[...selMeses,val];
+  } else if(field==='nome'){
+    selNomes=selNomes.includes(val)?selNomes.filter(v=>v!==val):[...selNomes,val];
+    document.getElementById('fNome').value='';
+  } else if(field==='item'){
+    selItems=selItems.includes(val)?selItems.filter(v=>v!==val):[...selItems,val];
+    document.getElementById('fItem').value='';
+  }
+  renderMultiPills();
+  const dropId=field==='ano'?'acAno':field==='mes'?'acMes':field==='nome'?'acNome':'acItem';
+  populateDrop(dropId);
+  const drop=document.getElementById(dropId);
+  if(drop) drop.classList.add('open');
+  applyFilters();
+}
+
+function onAcInputMulti(iId,dId,field){
+  const inp=document.getElementById(iId),drop=document.getElementById(dId);
+  if(!inp||!drop) return;
+  const q=inp.value.toLowerCase();
+  const selArr=field==='nome'?selNomes:selItems;
+  const vals=[...new Set(allData.map(d=>d[field]).filter(v=>v&&v.trim()))].sort();
+  const opts=q?vals.filter(v=>v.toLowerCase().includes(q)):vals;
+  drop.innerHTML=opts.slice(0,80).map(o=>`<div class="ac-opt${selArr.includes(o)?' ac-sel':''}"
+    onclick="event.stopPropagation();toggleSel('${field}','${o.replace(/'/g,"\'").replace(/"/g,'&quot;')}')">${hlMatch(o,inp.value)}${selArr.includes(o)?'<span style="float:right;color:#1a7a52;font-size:13px">✓</span>':''}</div>`).join('')
+    +(opts.length<vals.length?`<div class="ac-more">${opts.length} de ${vals.length}</div>`:'');
+  drop.classList.add('open');
+}
+
+function renderMultiPills(){
+  const mkPill=(v,label,field)=>`<span class="mpill">${label}<span class="mpill-x" onclick="toggleSel('${field}','${v}')">×</span></span>`;
+  const ap=document.getElementById('anoPills');
+  const mp=document.getElementById('mesPills');
+  const np=document.getElementById('nomePills');
+  const ip=document.getElementById('itemPills');
+  if(ap) ap.innerHTML=selAnos.map(v=>mkPill(v,v,'ano')).join('');
+  if(mp) mp.innerHTML=selMeses.map(v=>mkPill(v,MESES[parseInt(v)-1],'mes')).join('');
+  if(np) np.innerHTML=selNomes.map(v=>mkPill(v,v,'nome')).join('');
+  if(ip) ip.innerHTML=selItems.map(v=>mkPill(v,v,'item')).join('');
 }
 
 function clearAll(){
-  ['fAno','fMes'].forEach(id=>document.getElementById(id).value='');
-  ['fNome','fItem','fVMin','fVMax'].forEach(id=>document.getElementById(id).value='');
-  closeAc('acNome');closeAc('acItem');
-  selNomes=[];selItems=[];
+  selAnos=[];selMeses=[];selNomes=[];selItems=[];
+  ['fNome','fItem','fVMin','fVMax'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.querySelectorAll('.ac-drop.open').forEach(d=>d.classList.remove('open'));
   renderMultiPills();
   drillStack=[];selTipo=null;applyFilters();
 }
@@ -645,7 +740,10 @@ function renderBC(){
   const sl={dashboard:'Dashboard',entradas:'Entradas',saidas:'Saídas',investimentos:'Investimentos'};
   if(section!=='dashboard')parts.push({label:sl[section],fn:()=>{drillStack=[];selTipo=null;applyFilters();}});
   if(selTipo){const tl={entrada:'Entradas',saida:'Saídas',investimento:'Investimento',liquidacao:'Liquidação'};parts.push({label:tl[selTipo],fn:()=>{drillStack=[];selTipo=null;applyFilters();}});}
-  if(fv.ano||fv.mes){const lb=[fv.ano,fv.mes?MESES[fv.mes-1]:''].filter(Boolean).join(' ');parts.push({label:lb});}
+  if(selAnos.length||selMeses.length){
+    const lb=[...selAnos,...selMeses.map(v=>MESES[parseInt(v)-1])].join(', ');
+    parts.push({label:lb});
+  }
   drillStack.forEach((ds,i)=>parts.push({label:ds.label,fn:()=>{drillStack=drillStack.slice(0,i);applyFilters();}}));
   document.getElementById('breadcrumb').innerHTML=parts.map((p,i)=>{const last=i===parts.length-1;const el=last?`<span class="bc-item cur">${p.label}</span>`:`<span class="bc-item" onclick="(${p.fn})()">${p.label}</span>`;return el+(last?'':'<span class="bc-sep">›</span>');}).join('');
 }
@@ -655,10 +753,12 @@ function renderPills(){
   const fv=getFV(),pills=[];
   if(fv.ano)pills.push({l:'Ano: '+fv.ano,c:()=>{document.getElementById('fAno').value='';applyFilters();}});
   if(fv.mes)pills.push({l:'Mês: '+MESES[fv.mes-1],c:()=>{document.getElementById('fMes').value='';applyFilters();}});
-  selNomes.forEach(v=>pills.push({l:'Nome: '+v,c:()=>{removeSelNome(v);}}));
+  selAnos.forEach(v=>pills.push({l:'Ano: '+v,c:()=>{toggleSel('ano',v);}}));
+  selMeses.forEach(v=>pills.push({l:'Mês: '+MESES[parseInt(v)-1],c:()=>{toggleSel('mes',v);}}));
+  selNomes.forEach(v=>pills.push({l:'Nome: '+v,c:()=>{toggleSel('nome',v);}}));
   if(!selNomes.length&&fv.nome)pills.push({l:'Nome: "'+fv.nome+'"',c:()=>{document.getElementById('fNome').value='';closeAc('acNome');applyFilters();}});
   selItems.forEach(v=>pills.push({l:'Item: '+v,c:()=>{removeSelItem(v);}}));
-  if(!selItems.length&&fv.item)pills.push({l:'Item: "'+fv.item+'"',c:()=>{document.getElementById('fItem').value='';closeAc('acItem');applyFilters();}});
+  selItems.forEach(v=>pills.push({l:'Item: '+v,c:()=>{toggleSel('item',v);}}));
   if(selTipo){const tl={entrada:'Entradas',saida:'Saídas',investimento:'Investimento',liquidacao:'Liquidação'};pills.push({l:'Tipo: '+tl[selTipo],c:()=>{selTipo=null;applyFilters();}});}
   drillStack.forEach((ds,i)=>pills.push({l:ds.label,c:()=>{drillStack=drillStack.slice(0,i);applyFilters();}}));
   document.getElementById('pills').innerHTML=pills.map(p=>`<span class="pill">${p.l}<span class="pill-x" onclick="(${p.c})()">×</span></span>`).join('');
@@ -985,10 +1085,7 @@ function renderCharts(){
     else if(d.tipo==='rendimento')   byM[k].rd +=d.valor;
   });
   const mks=Object.keys(byM).sort().slice(-18);
-  // Debug: if no data, try without date filter
-  if(mks.length===0 && filtered.length>0){
-    console.warn('No date data found in filtered records. Sample:', filtered.slice(0,3).map(d=>({anoN:d.anoN,mesN:d.mesN,data:d.data})));
-  }
+
   const mls=mks.map(k=>{const[y,m]=k.split('-');return MESES[+m-1]+'/'+y.slice(2);});
 
   if(chartM) chartM.destroy();
@@ -1240,35 +1337,76 @@ let acHL={acNome:-1,acItem:-1};
 
 function getAcOpts(field,q){const vals=[...new Set(allData.map(d=>d[field]).filter(v=>v&&v.trim()))].sort();if(!q)return vals.slice(0,80);return vals.filter(v=>v.toLowerCase().includes(q.toLowerCase())).slice(0,80);}
 function hlMatch(t,q){if(!q)return t;const i=t.toLowerCase().indexOf(q.toLowerCase());if(i<0)return t;return t.slice(0,i)+'<mark>'+t.slice(i,i+q.length)+'</mark>'+t.slice(i+q.length);}
-function onAcInput(iId,dId,field){const inp=document.getElementById(iId),drop=document.getElementById(dId);const q=inp.value;acHL[dId]=-1;const opts=getAcOpts(field,q);const tot=[...new Set(allData.map(d=>d[field]).filter(v=>v&&v.trim()))].length;drop.innerHTML=(!opts.length)?'<div class="ac-opt" style="color:var(--t3)">Nenhum resultado</div>':opts.map((o,i)=>`<div class="ac-opt" data-val="${o.replace(/"/g,'&quot;')}" data-idx="${i}" onmousedown="pickAc('${iId}','${dId}',this)" onmouseover="hlAc('${dId}',${i})">${hlMatch(o,q)}</div>`).join('')+(opts.length<tot?`<div class="ac-more">${opts.length} de ${tot}</div>`:'');drop.classList.add('open');applyFilters();}
+function onAcInput(iId,dId,field){
+  if(iId==='fNome'||iId==='fItem'){onAcInputMulti(iId,dId,field);return;}
+  const inp=document.getElementById(iId),drop=document.getElementById(dId);
+  const q=inp.value;acHL[dId]=-1;
+  const opts=getAcOpts(field,q);
+  const tot=[...new Set(allData.map(d=>d[field]).filter(v=>v&&v.trim()))].length;
+  drop.innerHTML=(!opts.length)?'<div class="ac-opt" style="color:var(--t3)">Nenhum resultado</div>':
+    opts.map((o,i)=>`<div class="ac-opt" data-val="${o.replace(/"/g,'&quot;')}" data-idx="${i}"
+      onclick="event.stopPropagation();pickAc('${iId}','${dId}',this)"
+      onmouseover="hlAc('${dId}',${i})">${hlMatch(o,q)}</div>`).join('')
+    +(opts.length<tot?`<div class="ac-more">${opts.length} de ${tot}</div>`:'');
+  drop.classList.add('open');applyFilters();
+}
 function pickAc(iId,dId,el){
   const val=el.dataset.val;
   if(iId==='fNome'){
-    if(!selNomes.includes(val)){selNomes.push(val);}
+    if(!selNomes.includes(val)) selNomes.push(val);
     document.getElementById(iId).value='';
-    renderMultiPills();closeAc(dId);applyFilters();return;
+    renderMultiPills();applyFilters();
+    // keep dropdown open, refresh with checkmarks
+    onAcInputMulti('fNome','acNome','nome');
+    return;
   }
   if(iId==='fItem'){
-    if(!selItems.includes(val)){selItems.push(val);}
+    if(!selItems.includes(val)) selItems.push(val);
     document.getElementById(iId).value='';
-    renderMultiPills();closeAc(dId);applyFilters();return;
+    renderMultiPills();applyFilters();
+    onAcInputMulti('fItem','acItem','item');
+    return;
   }
   document.getElementById(iId).value=val;closeAc(dId);applyFilters();
+}
+
+function onAcInputMulti(iId,dId,field){
+  const inp=document.getElementById(iId),drop=document.getElementById(dId);
+  const q=inp.value;
+  const selArr=field==='nome'?selNomes:selItems;
+  const vals=[...new Set(allData.map(d=>d[field]).filter(v=>v&&v.trim()))].sort();
+  const opts=q?vals.filter(v=>v.toLowerCase().includes(q.toLowerCase())):vals;
+  const tot=vals.length;
+  drop.innerHTML=opts.slice(0,80).map((o,i)=>{
+    const isSel=selArr.includes(o);
+    return`<div class="ac-opt${isSel?' ac-sel':''}" data-val="${o.replace(/"/g,'&quot;')}" data-idx="${i}"
+      onclick="event.stopPropagation();pickAc('${iId}','${dId}',this)"
+      onmouseover="hlAc('${dId}',${i})">${hlMatch(o,q)}${isSel?'<span style="float:right;color:#1a7a52;font-size:12px">✓</span>':''}</div>`;
+  }).join('')+(opts.length<tot?`<div class="ac-more">${opts.length} de ${tot}</div>`:'');
+  drop.classList.add('open');
 }
 
 function removeSelNome(v){selNomes=selNomes.filter(x=>x!==v);renderMultiPills();applyFilters();}
 function removeSelItem(v){selItems=selItems.filter(x=>x!==v);renderMultiPills();applyFilters();}
 
 function renderMultiPills(){
+  const ap=document.getElementById('anoPills');
+  const mp=document.getElementById('mesPills');
   const np=document.getElementById('nomePills');
   const ip=document.getElementById('itemPills');
-  if(np)np.innerHTML=selNomes.map(v=>`<span class="mpill">${v}<span class="mpill-x" onmousedown="removeSelNome('${v.replace(/'/g,"\\'")}')">×</span></span>`).join('');
-  if(ip)ip.innerHTML=selItems.map(v=>`<span class="mpill">${v}<span class="mpill-x" onmousedown="removeSelItem('${v.replace(/'/g,"\\'")}')">×</span></span>`).join('');
+  if(ap) ap.innerHTML=selAnos.map(v=>`<span class="mpill">${v}<span class="mpill-x" onmousedown="toggleMulti('ano','${v}')">×</span></span>`).join('');
+  if(mp) mp.innerHTML=selMeses.map(v=>`<span class="mpill">${MESES[parseInt(v)-1]}<span class="mpill-x" onmousedown="toggleMulti('mes','${v}')">×</span></span>`).join('');
+  if(np) np.innerHTML=selNomes.map(v=>`<span class="mpill">${v}<span class="mpill-x" onmousedown="removeSelNome('${v.replace(/'/g,"\\'")}')">×</span></span>`).join('');
+  if(ip) ip.innerHTML=selItems.map(v=>`<span class="mpill">${v}<span class="mpill-x" onmousedown="removeSelItem('${v.replace(/'/g,"\\'")}')">×</span></span>`).join('');
 }
 function hlAc(dId,idx){acHL[dId]=idx;document.querySelectorAll(`#${dId} .ac-opt`).forEach((e,i)=>e.classList.toggle('hl',i===idx));}
 function closeAc(dId){document.getElementById(dId).classList.remove('open');acHL[dId]=-1;}
 function onAcKey(e,dId,iId){const drop=document.getElementById(dId),items=drop.querySelectorAll('.ac-opt');if(!drop.classList.contains('open'))return;if(e.key==='ArrowDown'){e.preventDefault();acHL[dId]=Math.min(acHL[dId]+1,items.length-1);hlAc(dId,acHL[dId]);items[acHL[dId]]?.scrollIntoView({block:'nearest'});}else if(e.key==='ArrowUp'){e.preventDefault();acHL[dId]=Math.max(acHL[dId]-1,0);hlAc(dId,acHL[dId]);items[acHL[dId]]?.scrollIntoView({block:'nearest'});}else if(e.key==='Enter'){e.preventDefault();if(acHL[dId]>=0&&items[acHL[dId]]){document.getElementById(iId).value=items[acHL[dId]].dataset.val;closeAc(dId);applyFilters();}}else if(e.key==='Escape')closeAc(dId);}
-document.addEventListener('click',e=>{if(!e.target.closest('.ac-wrap')){closeAc('acNome');closeAc('acItem');}});
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.ac-wrap')){
+    document.querySelectorAll('.ac-drop.open').forEach(d=>d.classList.remove('open'));
+  }
+});
 
 // Register datalabels plugin globally (only for charts that opt-in)
 // Charts without datalabels config will have display:false by default
