@@ -1138,10 +1138,7 @@ function setAvgGran(g){
 }
 
 function fmtShort(v){
-  if(v>=1000000) return'R$'+(v/1000000).toFixed(1)+'M';
-  if(v>=10000)   return'R$'+(v/1000).toFixed(0)+'k';
-  if(v>=1000)    return'R$'+(v/1000).toFixed(1)+'k';
-  return'R$'+Math.round(v);
+  return'R$ '+Math.round(v).toLocaleString('pt-BR');
 }
 
 function renderCharts(){
