@@ -383,6 +383,27 @@ td.vb{color:var(--blue);font-weight:600}td.va{color:var(--amber);font-weight:600
       </div>
 
       <!-- TABLE -->
+      <!-- MÉDIA POR PERÍODO -->
+      <div class="card" style="margin-bottom:18px">
+        <div class="card-hd">
+          <span>Média por período</span>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <div class="legend">
+              <span class="lg-i"><span class="lg-dot" style="background:#1a7a52;border-radius:50%"></span>Entradas</span>
+              <span class="lg-i"><span class="lg-dot" style="background:#b83a1c;border-radius:50%"></span>Saídas</span>
+              <span class="lg-i"><span class="lg-dot" style="background:#5c3fa0;border-radius:50%"></span>Rendimento</span>
+              <span class="lg-i"><span class="lg-dot" style="background:transparent;border-radius:50%;border:2px dashed #6b6960"></span>Saldo médio</span>
+            </div>
+            <div style="display:flex;gap:4px">
+              <button class="rb-btn" id="btnAvgYear" onclick="setAvgGran('year')" style="height:24px;font-size:11px">Por ano</button>
+              <button class="rb-btn primary" id="btnAvgMonth" onclick="setAvgGran('month')" style="height:24px;font-size:11px">Por mês</button>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--t3);margin-bottom:10px">Média mensal — divide o total pelo número de meses com dados. Responde a todos os filtros ativos.</div>
+        <div style="position:relative;height:260px"><canvas id="chartAvg" role="img" aria-label="Média por período">Gráfico de média.</canvas></div>
+      </div>
+
       <div class="table-wrap">
         <div class="table-hd">
           <span class="table-title">Lançamentos <span style="font-size:10px;color:var(--t3);font-weight:400">— clique numa linha para detalhar</span></span>
@@ -428,7 +449,7 @@ const MESES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','
 const PAGE=20;
 let allData=[],filtered=[];
 let page=1,section='dashboard';
-let chartM=null,chartP=null,chartL=null;
+let chartM=null,chartP=null,chartL=null,chartAvg=null;
 let selTipo=null;
 let drillStack=[];
 let selAnos=[];    // multiple ano selection
@@ -1100,12 +1121,20 @@ function updateSb(){
 /* ── CHARTS ─────────────────────────────────────────────────────── */
 // granularity for line chart: 'year' or 'month'
 let lineGran = 'month';
+let avgGran  = 'month';
 
 function setGran(g){
   lineGran=g;
   document.getElementById('btnGranYear').classList.toggle('primary',g==='year');
   document.getElementById('btnGranMonth').classList.toggle('primary',g==='month');
   renderLineChart();
+}
+
+function setAvgGran(g){
+  avgGran=g;
+  document.getElementById('btnAvgYear').classList.toggle('primary',g==='year');
+  document.getElementById('btnAvgMonth').classList.toggle('primary',g==='month');
+  renderAvgChart();
 }
 
 function fmtShort(v){
@@ -1219,6 +1248,7 @@ function renderCharts(){
   renderLineChart();
   document.getElementById('btnGranYear').classList.toggle('primary',lineGran==='year');
   document.getElementById('btnGranMonth').classList.toggle('primary',lineGran==='month');
+  renderAvgChart();
 }
 
 function renderLineChart(){
@@ -1332,6 +1362,73 @@ function updateSortHeaders(){
     el.classList.remove('asc','desc');
     if(sortTable.col===c) el.classList.add(sortTable.dir===1?'asc':'desc');
   });
+}
+
+
+/* ── AVG CHART ─────────────────────────────────────────────────── */
+function renderAvgChart(){
+  const byK={};
+  filtered.forEach(d=>{
+    const ay=d.anoN||d.data?.year, am=d.mesN||d.data?.month;
+    if(!ay||!am) return;
+    const k=avgGran==='year'?String(ay):String(am);
+    if(!byK[k])byK[k]={e:0,s:0,rd:0,months:new Set()};
+    if(d.tipo==='entrada')    byK[k].e +=d.valor;
+    if(d.tipo==='saida')      byK[k].s +=d.valor;
+    if(d.tipo==='rendimento') byK[k].rd+=d.valor;
+    byK[k].months.add(`${ay}-${am}`);
+  });
+
+  const keys=avgGran==='year'
+    ?Object.keys(byK).sort((a,b)=>+a-+b)
+    :['1','2','3','4','5','6','7','8','9','10','11','12'].filter(k=>byK[k]);
+
+  const labels=avgGran==='year'?keys:keys.map(k=>MESES[+k-1]);
+  const avg=(k,f)=>byK[k]?Math.round(byK[k][f]/(byK[k].months.size||1)):0;
+  const dataE =keys.map(k=>avg(k,'e'));
+  const dataS =keys.map(k=>avg(k,'s'));
+  const dataRD=keys.map(k=>avg(k,'rd'));
+  const dataSL=keys.map(k=>byK[k]?Math.round((byK[k].e-byK[k].s)/(byK[k].months.size||1)):0);
+
+  if(chartAvg) chartAvg.destroy();
+  chartAvg=new Chart(document.getElementById('chartAvg'),{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Entradas',   data:dataE,  backgroundColor:'rgba(26,122,82,0.75)', borderRadius:4},
+      {label:'Saídas',     data:dataS,  backgroundColor:'rgba(184,58,28,0.75)',  borderRadius:4},
+      {label:'Rendimento', data:dataRD, backgroundColor:'rgba(92,63,160,0.75)', borderRadius:4},
+      {label:'Saldo médio',data:dataSL, type:'line',
+        borderColor:'#6b6960',backgroundColor:'transparent',borderWidth:2,borderDash:[5,4],
+        pointRadius:4,pointHoverRadius:6,pointBackgroundColor:'#6b6960',fill:false,tension:0.3,
+        order:-1,datalabels:{display:false}},
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{
+          label:ctx=>` ${ctx.dataset.label}: ${fmtR(ctx.raw)}`,
+          title:items=>`Média — ${items[0].label}${avgGran==='month'?' (todos os anos)':''}`
+        }},
+        datalabels:{
+          display:ctx=>ctx.dataset.type!=='line'&&ctx.dataset.data[ctx.dataIndex]>0,
+          anchor:'end',align:'end',
+          color:ctx=>{const cols=['#1a7a52','#b83a1c','#5c3fa0'];return cols[ctx.datasetIndex]||'#333';},
+          font:{size:9,weight:'600'},
+          formatter:v=>fmtShort(v),
+          clip:true
+        }
+      },
+      layout:{padding:{top:24}},
+      scales:{
+        x:{ticks:{font:{size:11}},grid:{display:false}},
+        y:{ticks:{font:{size:10},callback:v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0})},grid:{color:'rgba(0,0,0,0.04)'},beginAtZero:true}
+      }
+    }
+  });
+  document.getElementById('btnAvgYear')?.classList.toggle('primary',avgGran==='year');
+  document.getElementById('btnAvgMonth')?.classList.toggle('primary',avgGran==='month');
 }
 
 function renderTable(){
