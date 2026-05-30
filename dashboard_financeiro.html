@@ -354,7 +354,7 @@ td.vb{color:var(--blue);font-weight:600}td.va{color:var(--amber);font-weight:600
             <span class="lg-i"><span class="lg-dot" style="background:#8a5200"></span>Liquidação</span>
           <span class="lg-i"><span class="lg-dot" style="background:#5c3fa0"></span>Rendimento</span>
           </div>
-          <div style="position:relative;height:240px"><canvas id="chartMes" role="img" aria-label="Fluxo mensal">Barras mensais.</canvas></div>
+          <div style="position:relative;height:280px"><canvas id="chartMes" role="img" aria-label="Fluxo mensal">Barras mensais.</canvas></div>
         </div>
         <div class="card">
           <div class="card-hd"><span>Por categoria</span><span class="card-hint">clique para filtrar</span></div>
@@ -379,7 +379,7 @@ td.vb{color:var(--blue);font-weight:600}td.va{color:var(--amber);font-weight:600
             </div>
           </div>
         </div>
-        <div style="position:relative;height:260px"><canvas id="chartLine" role="img" aria-label="Evolução">Linha.</canvas></div>
+        <div style="position:relative;height:300px"><canvas id="chartLine" role="img" aria-label="Evolução">Linha.</canvas></div>
       </div>
 
       <!-- TABLE -->
@@ -401,7 +401,7 @@ td.vb{color:var(--blue);font-weight:600}td.va{color:var(--amber);font-weight:600
           </div>
         </div>
         <div style="font-size:11px;color:var(--t3);margin-bottom:10px">Média mensal — divide o total pelo número de meses com dados. Responde a todos os filtros ativos.</div>
-        <div style="position:relative;height:260px"><canvas id="chartAvg" role="img" aria-label="Média por período">Gráfico de média.</canvas></div>
+        <div style="position:relative;height:300px"><canvas id="chartAvg" role="img" aria-label="Média por período">Gráfico de média.</canvas></div>
       </div>
 
       <div class="table-wrap">
@@ -1138,7 +1138,10 @@ function setAvgGran(g){
 }
 
 function fmtShort(v){
-  return'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  if(v>=1000000) return'R$'+(v/1000000).toFixed(1)+'M';
+  if(v>=10000)   return'R$'+(v/1000).toFixed(0)+'k';
+  if(v>=1000)    return'R$'+(v/1000).toFixed(1)+'k';
+  return'R$'+Math.round(v);
 }
 
 function renderCharts(){
@@ -1176,17 +1179,17 @@ function renderCharts(){
         tooltip:{callbacks:{label:ctx=>' '+fmtR(ctx.raw)}},
         datalabels:{
           display: ctx => ctx.dataset.data[ctx.dataIndex] > 0,
-          anchor:'end',align:'end',
-          color:['#1a7a52','#b83a1c','#1855a3','#8a5200'],
-          font:{size:8,weight:'600'},
+          anchor:'end',align:'top',offset:2,
+          color: ctx => ['#1a7a52','#b83a1c','#1855a3','#8a5200','#5c3fa0'][ctx.datasetIndex]||'#333',
+          font:{size:7,weight:'600'},
           formatter: v => v>0 ? fmtShort(v) : '',
-          clip:true
+          clip:false
         }
       },
-      layout:{padding:{top:22}},
+      layout:{padding:{top:30,left:5,right:5}},
       scales:{
         x:{ticks:{font:{size:10},autoSkip:true,maxRotation:45},grid:{display:false}},
-        y:{ticks:{font:{size:10},callback:v=>v===0?'R$ 0':'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0})},grid:{color:'rgba(0,0,0,0.04)'}}
+        y:{ticks:{font:{size:10},callback:v=>v===0?'R$ 0':'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0}),maxTicksLimit:6},grid:{color:'rgba(0,0,0,0.04)'}}
       },
       onClick:(evt,els)=>{
         if(!els.length) return;
@@ -1308,13 +1311,14 @@ function renderLineChart(){
             const v=ctx.dataset.data[ctx.dataIndex];
             return v>0;
           },
-          anchor:'top',align:'top',
+          anchor:'end',align:'top',offset:4,
           color:ctx=>ctx.dataset.label==='Entradas'?'#1a7a52':ctx.dataset.label==='Rendimento'?'#5c3fa0':'#b83a1c',
-          font:{size:9,weight:'600'},
-          formatter:v=>fmtShort(v)
+          font:{size:8,weight:'600'},
+          formatter:v=>fmtShort(v),
+          clip:false
         }
       },
-      layout:{padding:{top:24}},
+      layout:{padding:{top:32,left:5,right:40}},
       scales:{
         x:{ticks:{font:{size:10},autoSkip:true,maxRotation:45},grid:{display:false}},
         y:{ticks:{font:{size:10},callback:v=>v===0?'R$ 0':'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0})},grid:{color:'rgba(0,0,0,0.04)'},beginAtZero:true}
@@ -1415,12 +1419,13 @@ function renderAvgChart(){
           display:ctx=>ctx.dataset.type!=='line'&&ctx.dataset.data[ctx.dataIndex]>0,
           anchor:'end',align:'end',
           color:ctx=>{const cols=['#1a7a52','#b83a1c','#5c3fa0'];return cols[ctx.datasetIndex]||'#333';},
-          font:{size:9,weight:'600'},
+          font:{size:7,weight:'600'},
           formatter:v=>fmtShort(v),
-          clip:true
+          clip:false,
+          offset:2
         }
       },
-      layout:{padding:{top:24}},
+      layout:{padding:{top:32,left:5,right:40}},
       scales:{
         x:{ticks:{font:{size:11}},grid:{display:false}},
         y:{ticks:{font:{size:10},callback:v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0})},grid:{color:'rgba(0,0,0,0.04)'},beginAtZero:true}
