@@ -1456,7 +1456,7 @@ function renderTable(){
   const showObs=document.getElementById('toggleObs')?.checked||false;
   // Show/hide obs column header
   const shObs=document.getElementById('sh-obs');
-  if(shObs) shObs.style.display=showObs?'':'none';
+  if(shObs){ shObs.style.display=showObs?'table-cell':'none'; }
 
   tbody.innerHTML=pd2.map(d=>{
     const isSel=drillStack.find(ds=>ds.type==='nome'&&ds.value===d.nome)&&drillStack.find(ds=>ds.type==='item'&&ds.value===d.item);
