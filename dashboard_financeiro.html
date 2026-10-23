@@ -1695,34 +1695,6 @@ function updateSortHeaders(){
   });
 }
 
-function renderTable(){
-  const sortedFiltered=applyTableSort(filtered);
-  updateSortHeaders();
-  const total=sortedFiltered.length,totalP=Math.max(1,Math.ceil(total/PAGE));
-  const start=(page-1)*PAGE,pd2=sortedFiltered.slice(start,start+PAGE);
-  document.getElementById('tableCt').textContent=`${total.toLocaleString('pt-BR')} registros`;
-  document.getElementById('pagInfo').textContent=`Página ${page} de ${totalP}`;
-  const tbody=document.getElementById('tableBody');
-  const tipoMap={entrada:'<span class="badge be">↑ Entrada</span>',saida:'<span class="badge bs">↓ Saída</span>',investimento:'<span class="badge bi">◎ Investimento</span>',liquidacao:'<span class="badge bl">◈ Liquidação</span>'};
-  const vcls={entrada:'vp',saida:'vn',investimento:'vb',liquidacao:'va'};
-  if(!pd2.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:26px;color:#9e9b93">Nenhum lançamento encontrado.</td></tr>';return;}
-  tbody.innerHTML=pd2.map(d=>{
-    const isSel=drillStack.find(ds=>ds.type==='nome'&&ds.value===d.nome)&&drillStack.find(ds=>ds.type==='item'&&ds.value===d.item);
-    return`<tr class="${isSel?'tr-sel':''}" onclick="rowClick('${d.nome.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}','${d.tipo}')">
-      <td style="color:#9e9b93;font-size:11px">${d.data?.str||'—'}</td>
-      <td>${tipoMap[d.tipo]||d.tipo}</td>
-      <td style="max-width:115px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${d.nome}">${d.nome||'—'}</td>
-      <td style="max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${d.item}">${d.item||'—'}</td>
-      <td class="${vcls[d.tipo]||''}" style="text-align:right">${fmtR(d.valor)}</td>
-    </tr>`;
-  }).join('');
-  // Paginação
-  const pb=document.getElementById('pagBtns');pb.innerHTML='';
-  const mb=(txt,pg,dis,act)=>{const b=document.createElement('button');b.className='pag-btn'+(act?' active':'');b.textContent=txt;b.disabled=dis;if(!dis)b.onclick=()=>{page=pg;renderTable();};return b;};
-  pb.appendChild(mb('‹',page-1,page<=1,false));
-  pRange(page,totalP).forEach(p=>{if(p==='…'){const s=document.createElement('span');s.textContent='…';s.style.cssText='padding:0 4px;color:#9e9b93;font-size:11px';pb.appendChild(s);}else pb.appendChild(mb(p,p,false,p===page));});
-  pb.appendChild(mb('›',page+1,page>=totalP,false));
-}
 
 function rowClick(nome,tipo){
   // Click row → seleciona tipo e drilla no nome
