@@ -408,10 +408,10 @@ td.vb{color:var(--blue);font-weight:600}td.va{color:var(--amber);font-weight:600
         <div class="table-hd">
           <span class="table-title">Lançamentos <span style="font-size:10px;color:var(--t3);font-weight:400">— clique numa linha para detalhar</span></span>
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-            <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:var(--t2);user-select:none;z-index:10;position:relative">
-              <input type="checkbox" id="toggleObs" onchange="renderTable()" style="width:16px;height:16px;cursor:pointer;accent-color:#1a7a52"/>
-              Mostrar observações
-            </label>
+            <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--t2);user-select:none">
+              <input type="checkbox" id="toggleObs" onclick="this.checked;renderTable()" style="width:16px;height:16px;cursor:pointer;accent-color:#1a7a52;flex-shrink:0"/>
+              <label for="toggleObs" style="cursor:pointer;margin:0">Mostrar observações</label>
+            </div>
             <span class="table-ct" id="tableCt">0</span>
           </div>
         </div>
@@ -638,7 +638,7 @@ function buildRows(rows,def){
   const kItem=ks.find(k=>nm(k)==='ITEM');
   const kValor=ks.find(k=>nm(k)==='VALOR')||dk(f,['VALOR','VALUE','AMOUNT']);
   const kLanc=ks.find(k=>nm(k).includes('LANCAMENTO')||nm(k).includes('LANCAM'));
-  const kObs =ks.find(k=>nm(k)==='DESCRICAO'||nm(k)==='OBSERVACAO'||nm(k)==='OBS'||nm(k)==='DESCR'||nm(k)==='NOTA'||nm(k)==='NOTAS');
+  const kObs =ks.find(k=>nm(k)==='DESCRICAO'||nm(k)==='DESCRICAO'||nm(k)==='OBSERVACAO'||nm(k)==='OBS'||nm(k)==='DESCR'||nm(k)==='NOTA'||nm(k)==='NOTAS'||nm(k).includes('DESCRI'));
   return rows.map(r=>{
     const item=kItem?String(r[kItem]||''):'';
     const nome=kNome?String(r[kNome]||''):'';
