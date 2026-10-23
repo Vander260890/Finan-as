@@ -408,12 +408,8 @@ td.vb{color:var(--blue);font-weight:600}td.va{color:var(--amber);font-weight:600
         <div class="table-hd">
           <span class="table-title">Lançamentos <span style="font-size:10px;color:var(--t3);font-weight:400">— clique numa linha para detalhar</span></span>
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-            <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:var(--t2);user-select:none">
-              <span style="position:relative;display:inline-block;width:36px;height:20px">
-                <input type="checkbox" id="toggleObs" onchange="renderTable()" style="opacity:0;width:0;height:0;position:absolute"/>
-                <span id="toggleObsSlider" style="position:absolute;inset:0;border-radius:20px;background:var(--s3);transition:background .2s;cursor:pointer"></span>
-                <span id="toggleObsKnob"   style="position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)"></span>
-              </span>
+            <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:var(--t2);user-select:none;z-index:10;position:relative">
+              <input type="checkbox" id="toggleObs" onchange="renderTable()" style="width:16px;height:16px;cursor:pointer;accent-color:#1a7a52"/>
               Mostrar observações
             </label>
             <span class="table-ct" id="tableCt">0</span>
@@ -1458,11 +1454,6 @@ function renderTable(){
   const vcls={entrada:'vp',saida:'vn',investimento:'vb',liquidacao:'va'};
   if(!pd2.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:26px;color:#9e9b93">Nenhum lançamento encontrado.</td></tr>';return;}
   const showObs=document.getElementById('toggleObs')?.checked||false;
-  // Update toggle visual state
-  const slider=document.getElementById('toggleObsSlider');
-  const knob=document.getElementById('toggleObsKnob');
-  if(slider) slider.style.background=showObs?'#1a7a52':'var(--s3)';
-  if(knob)   knob.style.transform=showObs?'translateX(16px)':'translateX(0)';
   // Show/hide obs column header
   const shObs=document.getElementById('sh-obs');
   if(shObs) shObs.style.display=showObs?'':'none';
