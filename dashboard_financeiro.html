@@ -407,7 +407,17 @@ td.vb{color:var(--blue);font-weight:600}td.va{color:var(--amber);font-weight:600
       <div class="table-wrap">
         <div class="table-hd">
           <span class="table-title">Lançamentos <span style="font-size:10px;color:var(--t3);font-weight:400">— clique numa linha para detalhar</span></span>
-          <span class="table-ct" id="tableCt">0</span>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:var(--t2);user-select:none">
+              <span style="position:relative;display:inline-block;width:36px;height:20px">
+                <input type="checkbox" id="toggleObs" onchange="renderTable()" style="opacity:0;width:0;height:0;position:absolute"/>
+                <span id="toggleObsSlider" style="position:absolute;inset:0;border-radius:20px;background:var(--s3);transition:background .2s;cursor:pointer"></span>
+                <span id="toggleObsKnob"   style="position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)"></span>
+              </span>
+              Mostrar observações
+            </label>
+            <span class="table-ct" id="tableCt">0</span>
+          </div>
         </div>
         <table>
           <thead><tr>
@@ -415,6 +425,7 @@ td.vb{color:var(--blue);font-weight:600}td.va{color:var(--amber);font-weight:600
             <th style="width:98px"  class="sh" onclick="sortBy('tipo')"  id="sh-tipo">Tipo</th>
             <th style="width:120px" class="sh" onclick="sortBy('nome')"  id="sh-nome">Nome</th>
             <th                     class="sh" onclick="sortBy('item')"  id="sh-item">Item</th>
+            <th id="sh-obs" style="display:none;min-width:160px" class="sh" onclick="sortBy('obs')">Observações</th>
             <th style="width:108px;text-align:right" class="sh" onclick="sortBy('valor')" id="sh-valor">Valor</th>
           </tr></thead>
           <tbody id="tableBody"></tbody>
@@ -631,6 +642,7 @@ function buildRows(rows,def){
   const kItem=ks.find(k=>nm(k)==='ITEM');
   const kValor=ks.find(k=>nm(k)==='VALOR')||dk(f,['VALOR','VALUE','AMOUNT']);
   const kLanc=ks.find(k=>nm(k).includes('LANCAMENTO')||nm(k).includes('LANCAM'));
+  const kObs =ks.find(k=>nm(k)==='DESCRICAO'||nm(k)==='OBSERVACAO'||nm(k)==='OBS'||nm(k)==='DESCR'||nm(k)==='NOTA'||nm(k)==='NOTAS');
   return rows.map(r=>{
     const item=kItem?String(r[kItem]||''):'';
     const nome=kNome?String(r[kNome]||''):'';
@@ -648,7 +660,8 @@ function buildRows(rows,def){
     const dataF = (anoN && mesN)
       ? {year:anoN, month:mesN, day:dayN, str:`${String(dayN).padStart(2,'0')}/${String(mesN).padStart(2,'0')}/${anoN}`}
       : data;
-    return{data:dataF,nome:nome.trim(),item:item.trim(),valor,tipo:classify(item,lanc,def),mesN:mesN||data?.month||null,anoN:anoN||data?.year||null};
+    const obs=kObs?String(r[kObs]||'').trim():'';
+    return{data:dataF,nome:nome.trim(),item:item.trim(),valor,tipo:classify(item,lanc,def),mesN:mesN||data?.month||null,anoN:anoN||data?.year||null,obs};
   }).filter(Boolean);
 }
 
@@ -1444,13 +1457,25 @@ function renderTable(){
   const tipoMap={entrada:'<span class="badge be">↑ Entrada</span>',saida:'<span class="badge bs">↓ Saída</span>',investimento:'<span class="badge bi">◎ Investimento</span>',liquidacao:'<span class="badge bl">◈ Liquidação</span>'};
   const vcls={entrada:'vp',saida:'vn',investimento:'vb',liquidacao:'va'};
   if(!pd2.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:26px;color:#9e9b93">Nenhum lançamento encontrado.</td></tr>';return;}
+  const showObs=document.getElementById('toggleObs')?.checked||false;
+  // Update toggle visual state
+  const slider=document.getElementById('toggleObsSlider');
+  const knob=document.getElementById('toggleObsKnob');
+  if(slider) slider.style.background=showObs?'#1a7a52':'var(--s3)';
+  if(knob)   knob.style.transform=showObs?'translateX(16px)':'translateX(0)';
+  // Show/hide obs column header
+  const shObs=document.getElementById('sh-obs');
+  if(shObs) shObs.style.display=showObs?'':'none';
+
   tbody.innerHTML=pd2.map(d=>{
     const isSel=drillStack.find(ds=>ds.type==='nome'&&ds.value===d.nome)&&drillStack.find(ds=>ds.type==='item'&&ds.value===d.item);
+    const obsCell=showObs?`<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--t2)" title="${d.obs||''}">${d.obs||'—'}</td>`:'';
     return`<tr class="${isSel?'tr-sel':''}" onclick="rowClick('${d.nome.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}','${d.tipo}')">
       <td style="color:#9e9b93;font-size:11px">${d.data?.str||'—'}</td>
       <td>${tipoMap[d.tipo]||d.tipo}</td>
       <td style="max-width:115px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${d.nome}">${d.nome||'—'}</td>
       <td style="max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${d.item}">${d.item||'—'}</td>
+      ${obsCell}
       <td class="${vcls[d.tipo]||''}" style="text-align:right">${fmtR(d.valor)}</td>
     </tr>`;
   }).join('');
