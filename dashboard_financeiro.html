@@ -409,7 +409,7 @@ td.vb{color:var(--blue);font-weight:600}td.va{color:var(--amber);font-weight:600
           <span class="table-title">Lançamentos <span style="font-size:10px;color:var(--t3);font-weight:400">— clique numa linha para detalhar</span></span>
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
             <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--t2);user-select:none">
-              <input type="checkbox" id="toggleObs" onclick="this.checked;renderTable()" style="width:16px;height:16px;cursor:pointer;accent-color:#1a7a52;flex-shrink:0"/>
+              <input type="checkbox" id="toggleObs" onchange="showObsCol=this.checked;renderTable()" style="width:16px;height:16px;cursor:pointer;accent-color:#1a7a52;flex-shrink:0"/>
               <label for="toggleObs" style="cursor:pointer;margin:0">Mostrar observações</label>
             </div>
             <span class="table-ct" id="tableCt">0</span>
@@ -459,6 +459,7 @@ let page=1,section='dashboard';
 let chartM=null,chartP=null,chartL=null,chartAvg=null;
 let selTipo=null;
 let drillStack=[];
+let showObsCol=false; // toggle observacoes column
 let selAnos=[];    // multiple ano selection
 let selMeses=[];   // multiple mes selection
 let selNomes=[];   // multiple nome selection
@@ -1453,10 +1454,10 @@ function renderTable(){
   const tipoMap={entrada:'<span class="badge be">↑ Entrada</span>',saida:'<span class="badge bs">↓ Saída</span>',investimento:'<span class="badge bi">◎ Investimento</span>',liquidacao:'<span class="badge bl">◈ Liquidação</span>'};
   const vcls={entrada:'vp',saida:'vn',investimento:'vb',liquidacao:'va'};
   if(!pd2.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:26px;color:#9e9b93">Nenhum lançamento encontrado.</td></tr>';return;}
-  const showObs=document.getElementById('toggleObs')?.checked||false;
+  const showObs=showObsCol;
   // Show/hide obs column header
   const shObs=document.getElementById('sh-obs');
-  if(shObs){ shObs.style.display=showObs?'table-cell':'none'; }
+  if(shObs) shObs.style.display=showObs?'table-cell':'none';
 
   tbody.innerHTML=pd2.map(d=>{
     const isSel=drillStack.find(ds=>ds.type==='nome'&&ds.value===d.nome)&&drillStack.find(ds=>ds.type==='item'&&ds.value===d.item);
